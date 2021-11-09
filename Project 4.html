@@ -1,0 +1,128 @@
+
+<!-- saved from url=(0141)file:///Users/jack/Library/Group%20Containers/3L68KQB4HG.group.com.readdle.smartemail/databases/messagesData/4/37472/Project4_GetMyMusic.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+    <title>Project 4</title>
+   </head>
+  <body>
+    <h1>Project 4: GetMyMusic!</h1>
+
+    <h2>Goal</h2>
+    <p>
+    The goal of Project 4 is for students to build <i>GetMyMusic!</i>,
+    a file/music synchronization application. Students will build both 
+    client and server capable of range of different functions.
+    </p>
+
+    <h2>Description</h2>
+    <p>
+      <b>Due:</b> Thursday, December 2, 11:59:59 p.m.
+      <b>There will be no extension to this due date or time! 
+      Anything submitted after the deadline will not be accepted!</b><br>
+    <b>Points:</b> 60<br>
+    <b>Teams:</b> Students <i>must</i> work in groups of size 3. Because there are 11 students taking
+    this class for a grade, there must also be one group of size 2.  The group of size two will be
+    approved by me, so that I know there is only a single group of size two.  Students should note that it
+    may be the case that not all members of a team receive the same grade!
+    </p>
+
+    <p>
+    Like so many other people, Prof S is frustrated with the fact that
+    every machine he owns has a different collection of songs in his iTunes
+    library. Moreover, Prof S does not want to use iCloud to solve this
+    because he wants his music stored on his own devices, not on Apple's servers.
+    Students will solve this problem and develop <i>GetMyMusic!</i>, a
+    networked application that enables multiple machines to ensure that they
+    have the same files in their music directory. 
+    </p>
+
+    <p> Clients should be capable of allowing a user to provide login credentials (username and password)
+      which are authenticated with the server.  (This need not be via a GUI.  Rather, I recommend doing it
+      via the Linux shell prompt).  Note that this means that the server should somehow
+      store logon information for valid users, which in turn means that there should be a means of providing
+      the server with this valid logon information.  The server should be able to accept this information both
+      at startup or while running.  The client should remain logged on for the duration, and NOT
+      store authentication information during that time.  
+    </p><p> 
+      Clients can send one of <b>5</b> messages to the server: 1) Logon
+      to the server.  This should happen automatically (rather than via
+      a query of a user) whenever a user logs on to the client, and at the start of each client 
+      session with the server.  2) List Files (ask
+      the server to return a list of files it currently has stored for the specific user associated with
+      that client); 3) Diff (based on 2)), the client should show a "diff" of the files it has in comparison to
+    the server - both files the server has that the client does not have, and files the client has and
+      the server does not have (and again, only for the user currently logged on to the client);
+      4) Sync (an operation that (using the information learned in 3))
+    pulls to the local device all files for the current user from the server that the local device
+    does not have and vice versa); and 4) Leave (the client should end its session
+    with the server and take care of any open connections). The server must be
+    multithreaded to handle multiple concurrent client requests (reads and
+    writes) and store/retrieve historical information about each client in a
+    file.  
+    </p>
+
+    <p>
+      In particular, the following functions will need to be implemented (you may create more
+      if you wish -- this is a minimum list)
+    </p>
+    <ul>
+        <li><tt>LOGON</tt>
+	</li><li><tt>LIST</tt> 
+	</li><li><tt>DIFF</tt> 
+	</li><li><tt>PULL</tt> 
+	</li><li><tt>LEAVE</tt> 
+    </li></ul>
+
+    <p>
+    Unlike your previous projects, no skeleton files will be provided. However,
+    I will instead provide design goals which must be met along the
+    path towards implementing this project. They are:
+    </p>
+
+    <ol>
+	<li> Students must develop an overview of the architecture they plan
+	to build that will achieve all of the above tasks. This should be
+	a written document, saved as a PDF. (3 pts)
+	</li><li> Given the above message types, students must define one or more
+	structs capable of carrying this information. (6 pts)
+	</li><li> Students must develop a centralized server capable of dealing
+	  with multiple clients concurrently, some of which may have different
+	  current users. You may use either pthreads
+	or select(), but you must justify your decision to do so. The 
+	server should indicate the current operation it is doing in the
+	terminal window. Also, "diff" must actually crawl the directory
+	structure and return all files belonging to the current user in the current directory (you do
+	not need to open sub-directories). (21 pts)
+	</li><li> Students must develop a client implementing a simple 
+	interface to allow a user to enter their choices. (21 pts)
+	</li><li> Students must develop a means of robustly determining whether
+	or not two files, even if named differently, contain the same
+	  content (without actually sending the entire file). (9 pts)
+	</li><li> Students must develop a means to store the authentication information
+	  for each user in such a way that the password is not exposed if the file
+	  storing authentication information is revealed.  
+    </li></ol>
+
+    <p>
+      As usual for this course, your execution environment is the Jepson Linux cluster.
+      (E.g., your client and server modules must compile and run on the Linux cluster, which is where
+      you will demo them to me.)
+    </p>
+
+    <h2>Submission Instructions</h2>
+    <p>
+      Each team is to turn in all their files as a single tarfile, submitted, as usual,
+      via email to Box (the email address for Project 4 will be sent at a later date.). 
+      The tarfile should be named as follows: 
+      netid_netid_netid_netid_proj4.tar, where the netids represent, well, your
+      netids.
+    </p>
+
+    <p>
+      Each group <b>must</b> demo their project to me (with all group members present).
+      Demos, which should take about 25 minutes per team, will be held on Friday, December 3
+      during our lab period.  I expect your entire group to be there.
+    </p>
+
+  
+
+</body></html>
