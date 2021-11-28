@@ -11,11 +11,13 @@ int main(int argc, char *argv[]) {
 
     char *serverHost = SERVER_HOST;
     char *servPortString = SERVER_PORT;
+    char *username;
+    char *password;
     // char *fileName;
 
     // Test for correct number of arguments
-    if (argc != 5)
-        DieWithError("Usage Project4Server -s <cookie> -p <port>");
+    if (argc != 9)
+        DieWithError("Usage Project4Server -h <IP/hostname> -p <port> -u <Username> -t <password>");
 
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
@@ -27,6 +29,12 @@ int main(int argc, char *argv[]) {
                     break;
                 case 'p':
                     servPortString = argv[i + 1];
+                    break;
+                case 'u':
+                    username = argv[i + 1];
+                    break;
+                case 't':
+                    password = argv[i + 1];
                     break;
                 // case 'f':
                 //     fileName = argv[i + 1];
@@ -63,6 +71,20 @@ int main(int argc, char *argv[]) {
         DieWithError("connect() failed");
 
 
+    // START OF LOGON CODE ---------------------------------------------------
+
+    // size_t num = 2;
+    // struct Packet logon;
+    // logon.type = 0b00000001;
+    // logon.length = (u_char) num;
+    // char temp[SHORT_BUFFSIZE];
+    // snprintf(temp, strlen(username)+strlen(password), "%s:%s", username, password);
+    // strncat(logon.data, temp, strlen(temp));
+    // strncat(logon.data, "\n", 1);
+    
+    // send(sock, &logon, strlen(logon.data) + 2, 0);
+    
+    // END OF LOGON CODE ------------------------------------------------------
 
     size_t num = 3;
     char fileNames[3][100] = {"sample1.mp3", "sample2.mp3", "sample3.mp3"};
@@ -109,7 +131,3 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-
-// void recievePush(char buffer[]){
-
-// }

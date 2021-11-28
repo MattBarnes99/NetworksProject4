@@ -1,4 +1,5 @@
 #include "NetworkHeader.h"
+#include <stdbool.h>
 
 // Communication with a client
 void HandleTCPClient(int clntSocket, char* cookie);
@@ -131,6 +132,29 @@ void HandleTCPClient(int clntSocket, char* cookie) {
             break;
         }
     }
+
+    // START OF LOGON HANDLING -----------------------------------
+    // int type = (int) buffer[0];
+    // bool validLogon = false;
+
+    // if (type == 0b000000001){
+    //     char *info = (buffer+2);
+    //     // char *usrName = strtok(info, ":");
+    //     // char *pwd = strtok(NULL, ":");
+    //     FILE *users = fopen("userInfo.txt", "r");
+        
+    //     char line[1024];
+    //     while(fgets(line,1024,users) ) {
+    //         if (line == info){
+    //             validLogon = true;
+    //         }
+    //         printf("%s\n",line);
+    //         printf("%s\n",info);
+    //         printf("%d\n",validLogon);
+
+    //     }
+    // }
+    // END OF LOGON HANDLING ---------------------------------------
 
     int num = (int) buffer[1];
     int fileSizes[(int) num];
