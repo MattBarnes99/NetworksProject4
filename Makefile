@@ -1,12 +1,16 @@
-EXECS = Project4Client
-OBJS = Project4Client.o
+EXECS = Project4Client Project4Server
+OBJS1 = utility.o Project4Client.o
+OBJS2 = utility.o Project4Server.o
 
 CC = gcc
 CCFLAGS = -std=gnu11 -Wall -g
 
 all: $(EXECS)
 
-Project1Client: $(OBJS)
+Project4Client: $(OBJS1)
+	$(CC) $(CCFLAGS) $^ -o $@
+
+Project4Server: $(OBJS2)
 	$(CC) $(CCFLAGS) $^ -o $@
 
 %.o: %.c *.h
@@ -16,4 +20,4 @@ Project1Client: $(OBJS)
 	$(CC) $(CCFLAGS) -c $<
 
 clean:
-	/bin/rm -f a.out $(OBJS) $(EXECS)
+	/bin/rm -f a.out $(OBJS1) $(OBJS2) $(EXECS)

@@ -23,6 +23,20 @@
 #define SHORT_BUFFSIZE  100     /* For messages I know are short */
 void DieWithError(char *errorMessage); /*Error handling function */
 
+// Packet size
+#define HEADER_SIZE    0x02
+#define DEFAULT_LENGTH 0x00
+
+// Packet types
+#define LOGON_TYPE   0x00
+#define LIST_TYPE    0x01
+#define PUSH_TYPE    0x02
+#define PULL_TYPE    0x03
+#define LEAVE_TYPE   0x04
+
+#define ACK_TYPE     0x05
+#define NACK_TYPE    0x06
+
 struct Packet {
     u_char type;
     u_char length;

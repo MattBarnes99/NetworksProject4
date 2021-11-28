@@ -1,32 +1,43 @@
-#include "NetworkHeader.h"
+#include "utility.h"
 #include <stdbool.h>
 
 // Communication with a client
-void HandleTCPClient(int clntSocket, char* cookie);
+void HandleTCPClient(int clntSocket);
 
 // Receive a message sent
-unsigned int receiveMessage(char* name, int size, int clntSocket);
+// unsigned int receiveMessage(char* name, int size, int clntSocket);
+
+// size_t sendPacket(int sock, u_char type, u_char length, char *data) {
+//     struct Packet p;
+//     p.type = type;
+//     p.length = length;
+//     strncpy(p.data, data, strlen(p.data) + HEADER_SIZE);
+
+//     ssize_t numBytes = send(sock, &p, strlen(p.data) + HEADER_SIZE, 0);
+//     if (numBytes < 0)
+//         DieWithError("send() failed");
+//     else if (numBytes != strlen(p.data) + HEADER_SIZE)
+//         DieWithError("send() incorrect numbaer of bytes");
+
+//     return numBytes;
+// }
 
 bool validLogon = false;
 
 
 int main(int argc, char *argv[]) {
 
-    char* cookie;
     unsigned short serverPort = atoi(SERVER_PORT);
 
     // Test for correct number of arguments
-    if (argc != 5)
-        DieWithError("Usage Project4Server -s <cookie> -p <port>");
+    if (argc != 3)
+        DieWithError("Usage Project4Server -p <port>");
 
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             char c = argv[i][1];
             switch (c) {
-                case 's':
-                    cookie = argv[i + 1];
-                    break;
                 case 'p':
                     serverPort = htons(atoi(argv[i + 1]));
                     break;
@@ -75,8 +86,9 @@ int main(int argc, char *argv[]) {
         else
             puts("Unable to get client address");
 
+
         // Handle a communication with a client
-        HandleTCPClient(clntSock, cookie);
+        HandleTCPClient(clntSock);
     }
 }
 
@@ -114,84 +126,94 @@ unsigned int receiveMessage(char* name, int size, int clntSocket) {
 }
 
 
-void HandleTCPClient(int clntSocket, char* cookie) {
-    char buffer[BUFFSIZE]; // Buffer for the received message
-    unsigned int numBytes = 0;
-    unsigned int totalBytes = 0;
-    // Receive message from client
-    for(;;) {
-        numBytes = recv(clntSocket, buffer + numBytes, BUFFSIZE - 1, 0);
-        if (numBytes < 0)
-            DieWithError("recv() failed");
-        else if (numBytes == 0)
-            DieWithError("recv() connection closed prematurely");
-        totalBytes += numBytes;
-        printf("Received %d bytes\n", numBytes);
-        printf("Total: %d bytes\n", totalBytes);
+void HandleTCPClient(int clntSocket) {
 
-		// Stop when newline char is received
-        if(buffer[totalBytes - 1] == '\n') {
-            buffer[totalBytes - 1] = '\0';
-            break;
-        }
-    }
+    for (;;) {
+        char buffer[BUFFSIZE]; // Buffer for the received message
+        unsigned int numBytes = 0;
+        unsigned int totalBytes = 0;
 
-    int type = (int) buffer[0];
+        // Receive message from client
+        for(;;) {
+            numBytes = recv(clntSocket, buffer + numBytes, BUFFSIZE - 1, 0);
+            if (numBytes < 0)
+                DieWithError("recv() failed");
+            else if (numBytes == 0)
+                DieWithError("recv() connection closed prematurely");
+            totalBytes += numBytes;
+            printf("Received %d bytes\n", numBytes);
+            printf("Total: %d bytes\n", totalBytes);
+            printf("%s", buffer);
 
-    // LOGON REQUEST
-    if (type == 0b00000000){
-        char *info = (buffer+2);
-        // char *usrName = strtok(info, ":");
-        // char *pwd = strtok(NULL, ":");
-        FILE *users = fopen("userInfo.txt", "r");
-        
-        char line[1024];
-        while(fgets(line,1024,users) ) {
-            if (line == info){
-                validLogon = true;
+            // Stop when newline char is received
+            if(buffer[totalBytes - 1] == '\n') {
+                buffer[totalBytes - 1] = '\0';
+                break;
             }
-            // printf("%s\n",line);
-            // printf("%s\n",info);
-            // printf("%d\n",validLogon);
-        }
-    }
-
-    // LIST REQUEST
-    else if (type == 0b00000001){
-
-    }
-
-    // PULL REQUEST
-    else if (type == 0b00000011){
-        int num = (int) buffer[1];
-        int fileSizes[(int) num];
-        char fileNames[3][100];
-
-        printf("%d\n", num);
-        printf("%s\n", buffer + 2);
-
-        char *name = strtok(buffer + 2, ":");
-        char *size = strtok(NULL, ":");
-        for (int i = 0; i < num; i++){
-            strcpy(fileNames[i], name);
-            fileSizes[i] = atoi(size);
-            name = strtok(NULL, ":");
-            size = strtok(NULL, ":");
         }
 
-        for (int i = 0; i < num; i++){
-            receiveMessage(fileNames[i], fileSizes[i], clntSocket);
+        printf("%s", buffer);
+        struct Packet* p = (struct Packet*) buffer;
+        int type = p->type;
+
+        // LOGON REQUEST
+        if (type == LOGON_TYPE){
+            char *data = p->data;
+            // char *usrName = strtok(info, ":");
+            // char *pwd = strtok(NULL, ":");
+            FILE *users = fopen("userInfo.txt", "r");
+
+            char line[1024];
+            while(fgets(line, 1024, users) ) {
+                if (!strcmp(line, data))
+                    validLogon = true;
+                printf("%s\n", line);
+                printf("%d\n", validLogon);
+            }
+
+            u_char type = validLogon ? ACK_TYPE : NACK_TYPE;
+            sendPacket(clntSocket, type, DEFAULT_LENGTH, "\n");
+
+            fclose(users);
         }
-    }
 
-    // LEAVE REQUEST
-    else if (type == 0b00000100){
-        close(clntSocket);
-    }
+        // LIST REQUEST
+        else if (type == 0b00000001){
 
-    // ELSE INVALID - DO NOTHING
-    else{
+        }
 
+        // PULL REQUEST
+        else if (type == 0b00000011){
+            int num = (int) buffer[1];
+            int fileSizes[(int) num];
+            char fileNames[3][100];
+
+            printf("%d\n", num);
+            printf("%s\n", buffer + 2);
+
+            char *name = strtok(buffer + 2, ":");
+            char *size = strtok(NULL, ":");
+            for (int i = 0; i < num; i++){
+                strcpy(fileNames[i], name);
+                fileSizes[i] = atoi(size);
+                name = strtok(NULL, ":");
+                size = strtok(NULL, ":");
+            }
+
+            for (int i = 0; i < num; i++){
+                receiveMessage(fileNames[i], fileSizes[i], clntSocket);
+            }
+        }
+
+        // LEAVE REQUEST
+        else if (type == 0b00000100){
+            close(clntSocket);
+        }
+
+        // ELSE INVALID - DO NOTHING
+        else{
+
+        }
     }
 }
 
