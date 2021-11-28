@@ -7,6 +7,9 @@ void HandleTCPClient(int clntSocket, char* cookie);
 // Receive a message sent
 unsigned int receiveMessage(char* name, int size, int clntSocket);
 
+bool validLogon = false;
+
+
 int main(int argc, char *argv[]) {
 
     char* cookie;
@@ -14,7 +17,7 @@ int main(int argc, char *argv[]) {
 
     // Test for correct number of arguments
     if (argc != 5)
-        DieWithError("Usage Project1Server -s <cookie> -p <port>");
+        DieWithError("Usage Project4Server -s <cookie> -p <port>");
 
     // Parse arguments
     for (int i = 1; i < argc; ++i) {
@@ -133,54 +136,63 @@ void HandleTCPClient(int clntSocket, char* cookie) {
         }
     }
 
-    // START OF LOGON HANDLING -----------------------------------
-    // int type = (int) buffer[0];
-    // bool validLogon = false;
+    int type = (int) buffer[0];
 
-    // if (type == 0b000000001){
-    //     char *info = (buffer+2);
-    //     // char *usrName = strtok(info, ":");
-    //     // char *pwd = strtok(NULL, ":");
-    //     FILE *users = fopen("userInfo.txt", "r");
+    // LOGON REQUEST
+    if (type == 0b00000000){
+        char *info = (buffer+2);
+        // char *usrName = strtok(info, ":");
+        // char *pwd = strtok(NULL, ":");
+        FILE *users = fopen("userInfo.txt", "r");
         
-    //     char line[1024];
-    //     while(fgets(line,1024,users) ) {
-    //         if (line == info){
-    //             validLogon = true;
-    //         }
-    //         printf("%s\n",line);
-    //         printf("%s\n",info);
-    //         printf("%d\n",validLogon);
-
-    //     }
-    // }
-    // END OF LOGON HANDLING ---------------------------------------
-
-    int num = (int) buffer[1];
-    int fileSizes[(int) num];
-    char fileNames[3][100];
-
-    printf("%d\n", num);
-    printf("%s\n", buffer + 2);
-
-    char *name = strtok(buffer + 2, ":");
-    char *size = strtok(NULL, ":");
-    for (int i = 0; i < num; i++){
-        strcpy(fileNames[i], name);
-        fileSizes[i] = atoi(size);
-        name = strtok(NULL, ":");
-        size = strtok(NULL, ":");
+        char line[1024];
+        while(fgets(line,1024,users) ) {
+            if (line == info){
+                validLogon = true;
+            }
+            // printf("%s\n",line);
+            // printf("%s\n",info);
+            // printf("%d\n",validLogon);
+        }
     }
 
-    for (int i = 0; i < num; i++){
-        receiveMessage(fileNames[i], fileSizes[i], clntSocket);
+    // LIST REQUEST
+    else if (type == 0b00000001){
+
     }
 
+    // PULL REQUEST
+    else if (type == 0b00000011){
+        int num = (int) buffer[1];
+        int fileSizes[(int) num];
+        char fileNames[3][100];
 
-    printf("hello\n");
+        printf("%d\n", num);
+        printf("%s\n", buffer + 2);
 
+        char *name = strtok(buffer + 2, ":");
+        char *size = strtok(NULL, ":");
+        for (int i = 0; i < num; i++){
+            strcpy(fileNames[i], name);
+            fileSizes[i] = atoi(size);
+            name = strtok(NULL, ":");
+            size = strtok(NULL, ":");
+        }
 
-    close(clntSocket); // Close client socket
+        for (int i = 0; i < num; i++){
+            receiveMessage(fileNames[i], fileSizes[i], clntSocket);
+        }
+    }
+
+    // LEAVE REQUEST
+    else if (type == 0b00000100){
+        close(clntSocket);
+    }
+
+    // ELSE INVALID - DO NOTHING
+    else{
+
+    }
 }
 
 void DieWithError(char *errorMessage)
