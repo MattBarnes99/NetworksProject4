@@ -15,6 +15,7 @@
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <stdint.h>
+#include <pthread.h>
 
 
 #define SERVER_HOST "141.166.206.223"  /* wallis IP address */

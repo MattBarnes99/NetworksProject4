@@ -31,6 +31,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Print banner
+    FILE *banner = fopen("name.txt", "r");
+    char c = fgetc(banner);
+    while (c != EOF){
+        printf ("%c", c);
+        c = fgetc(banner);
+    }
+    fclose(banner);
+    printf("\n");
+
     // Setup TCP connection
     int sock = setupConnection(serverHost, servPortString);
 
@@ -39,12 +49,16 @@ int main(int argc, char *argv[]) {
     char username[SHORT_BUFFSIZE];
     char password[SHORT_BUFFSIZE];
     while (!logged) {
+        // Enter credentials
         printf("Please enter username: ");
         scanf("%s", username);
         printf("Please enter password: ");
         scanf("%s", password);
+        
+        // Prepare to send packet with login info
         char message[SHORT_BUFFSIZE];
-        snprintf(message, strlen(username) + strlen(password) + 2, "%s:%s", username, password);
+        snprintf(message, strlen(username) + strlen(password) + HEADER_SIZE,
+            "%s:%s", username, password);
         strncat(message, "\n", 1);
 
         sendPacket(sock, LOGON_TYPE, DEFAULT_LENGTH, message);
@@ -69,8 +83,8 @@ int main(int argc, char *argv[]) {
         char message[BUFFSIZE];
         memset(message, 0, sizeof(message));
 
-
-        printf("Please enter a command:\n");
+        // Ask user to enter a command
+        printf("\nPlease enter a command (type help for list of commands):\n");
         scanf("%s", command);
         char* str = command;
         while (*str) {
@@ -88,7 +102,6 @@ int main(int argc, char *argv[]) {
         else if (!strcmp(command, "DIFF")){
             printf("diff correct\n");
             sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
-
         }
 
         // PULL (SYNC) REQUEST
@@ -100,12 +113,10 @@ int main(int argc, char *argv[]) {
             // SEND PULL PACKET
             // RECEIVE FILES FROM SERVER
 
-            char *filePaths[2] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
+            char *filePaths[2] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"}; 
             int num = 2;
             sendPushPacket(filePaths, num, sock);
             pushFiles(filePaths, num, sock);
-
-
 
             // Sending pull request
             char *pullFiles[2] = {"sample3.mp3", "sample4.mp3"};
@@ -153,6 +164,15 @@ int main(int argc, char *argv[]) {
             sendPacket(sock, LEAVE_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             close(sock);
             exit(0); // exit thread later
+        }
+
+         // HELP REQUEST
+        else if (!strcmp(command, "HELP")){
+            printf("COMMANDS:\n");
+            printf("LIST:   Lists all songs that the server has stored for client\n");
+            printf("DIFF:   Lists songs that client has that server does not AND songs that server has that client does not\n");
+            printf("PULL:   Synchronizes files so that server and client will have same songs\n");
+            printf("LEAVE:  Ends session for user\n");
         }
 
         // INVALID COMMAND
