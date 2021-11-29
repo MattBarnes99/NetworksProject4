@@ -92,60 +92,58 @@ int main(int argc, char *argv[]) {
         }
 
         // PULL (SYNC) REQUEST
-        else if (!strcmp(command, "PUSH")){
+        else if (!strcmp(command, "PULL")){
 
-            // Send Push command for songs that client has that server doesn't
-            char filePaths[2][SHORT_BUFFSIZE] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
-            size_t num = 2;
-            int fileSizes[(int) num];
+            // GET FILE NAMES FOR PUSH AND PULL FROM DIFF
+            // SEND PUSH PACKET
+            // PUSH FILES TO SERVER
+            // SEND PULL PACKET
+            // RECEIVE FILES FROM SERVER
 
-            for (size_t i = 0; i < num; i++) {
-                int fd = open(filePaths[i], O_RDONLY);
-                struct stat file_stat;
-                fstat(fd, &file_stat);
-                fileSizes[i] = file_stat.st_size;
-
-
-                char name[SHORT_BUFFSIZE];
-                memcpy(name, filePaths[i], SHORT_BUFFSIZE);
-                strtok(name, "/");
+            char *filePaths[2] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
+            int num = 2;
+            sendPushPacket(filePaths, num, sock);
+            pushFiles(filePaths, num, sock);
 
 
+
+            // Sending pull request
+            char *pullFiles[2] = {"sample3.mp3", "sample4.mp3"};
+            num = 2;
+            char message[BUFFSIZE];
+            memset(message, 0, sizeof(message));
+            for (int i = 0; i < num; i++) {
                 char temp[SHORT_BUFFSIZE];
-                snprintf(temp, sizeof(filePaths[i]) + sizeof(u_int32_t),
-                    "%s:%d:", strtok(NULL, "/"), fileSizes[i]);
+                snprintf(temp, sizeof(filePaths[i]) + MAX_DIGIT,
+                    "%s:", pullFiles[i]);
                 strncat(message, temp, strlen(temp));
             }
-
             strncat(message, "\n", 1);
-            printf("%s\n", message);
-            sendPacket(sock, PUSH_TYPE, num, message);
+            printf("%s", message);
+            sendPacket(sock, PULL_TYPE, num, message);
 
+            // Accepting that ready to get files
             struct Packet p = receivePacket(sock);
+            int fileSizes[num];
+            char fileNames[num][SHORT_BUFFSIZE];
 
-            if (p.type == ACK_TYPE) {
-                printf("ready to send files!\n");
-                for (size_t i = 0; i < num; i++) {
+            char *name = strtok(p.data, ":");
+            char *size = strtok(NULL, ":");
+            for (int i = 0; i < num; i++){
+                strcpy(fileNames[i], name);
+                fileSizes[i] = atoi(size);
+                name = strtok(NULL, ":");
+                size = strtok(NULL, ":");
+            }
 
-                    int fd = open(filePaths[i], O_RDONLY);
-                    struct stat file_stat;
-                    fstat(fd, &file_stat);
+            sendPacket(sock, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
-                    off_t offset = 0;
-                    int sent_bytes = 0;
-                    int remain_data = file_stat.st_size;
-
-                    /* Sending file data */
-                    while (((sent_bytes = sendfile(sock, fd, &offset, BUFFSIZE)) > 0) && (remain_data > 0)) {
-                        remain_data -= sent_bytes;
-                    }
-
-                    p = receivePacket(sock);
-                    if (p.type == ACK_TYPE) {
-                        printf("File sent successfully!\n");
-                        continue;
-                    }
-                }
+            // RECEIVE FILES FROM SERVER
+            for (int i = 0; i < num; i++){
+                char path[SHORT_BUFFSIZE];
+                snprintf(path, sizeof(path), "%s_Client/%s", username, pullFiles[i]);
+                receiveFile(path, fileSizes[i], sock);
+                sendPacket(sock, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             }
         }
 

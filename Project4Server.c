@@ -151,25 +151,30 @@ void HandleTCPClient(int clntSocket, char* username) {
         // PULL REQUEST
         else if (type == PULL_TYPE) {
             printf("PULL REQUEST\n");
-            // int num = p.length;
-            // int fileSizes[(int) num];
-            // char fileNames[3][100];
+            int num = p.length;
+            printf("NUM: %d\n", num);
+            char *filePaths[num];
 
-            // printf("%d\n", num);
-            // printf("%s\n", buffer + 2);
+            char *temp = strtok(p.data, ":");
+            for (int i = 0; i < num; i++) {
+                char path[SHORT_BUFFSIZE];
+                memset(path, 0, sizeof(path));
+                snprintf(path, sizeof(path), "%s_Server/%s", username, temp);
+                filePaths[i] = malloc(sizeof(path));
+                memcpy(filePaths[i], path, SHORT_BUFFSIZE);
+                temp = strtok(NULL, ":");
+            }
 
-            // char *name = strtok(buffer + 2, ":");
-            // char *size = strtok(NULL, ":");
-            // for (int i = 0; i < num; i++){
-            //     strcpy(fileNames[i], name);
-            //     fileSizes[i] = atoi(size);
-            //     name = strtok(NULL, ":");
-            //     size = strtok(NULL, ":");
-            // }
+            for (size_t i = 0; i < num; i++)
+            {
+                printf("IN server: %s\n", filePaths[i]);
+            }
 
-            // for (int i = 0; i < num; i++){
-            //     receiveMessage(fileNames[i], fileSizes[i], clntSocket);
-            // }
+            sendPushPacket(filePaths, num, clntSocket);
+            pushFiles(filePaths, num, clntSocket);
+
+            for (size_t i = 0; i < num; i++)
+                free(filePaths[i]);
         }
 
         // PUSH REQUEST
@@ -187,8 +192,6 @@ void HandleTCPClient(int clntSocket, char* username) {
                 name = strtok(NULL, ":");
                 size = strtok(NULL, ":");
             }
-
-            printf("Parsed correctly\n");
             sendPacket(clntSocket, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
             for (int i = 0; i < num; i++){
@@ -204,6 +207,8 @@ void HandleTCPClient(int clntSocket, char* username) {
             printf("LEAVE REQUEST\n");
             close(clntSocket);
             // Kill thread
+            // pthread_exit(NULL);
+            break;
         }
 
 
