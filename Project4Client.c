@@ -5,7 +5,7 @@ int main(int argc, char *argv[]) {
     char *serverHost = SERVER_HOST;
     char *servPortString = SERVER_PORT;
     char command[7];
-    // char *fileName;
+    struct Packet p;
 
     // Test for correct number of arguments
     if (argc != 5)
@@ -86,6 +86,8 @@ int main(int argc, char *argv[]) {
         // Ask user to enter a command
         printf("\nPlease enter a command (type help for list of commands):\n");
         scanf("%s", command);
+
+        // Convert command to uppercase
         char* str = command;
         while (*str) {
             *str = toupper((unsigned char) *str);
@@ -94,14 +96,116 @@ int main(int argc, char *argv[]) {
 
         // LIST REQUEST
         if (!strcmp(command, "LIST")){
-            printf("list correct\n");
             sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
+            p = receivePacket(sock);
+            printf("%s's files on the server:\n", username);
+            char *name = strtok(p.data, ":");
+            for (int i = 0; i < p.length; i++){
+                printf("%s\n", name);
+                strtok(NULL, ":");
+                name = strtok(NULL, ":");
+            }
         }
 
         // DIFF REQUEST
         else if (!strcmp(command, "DIFF")){
-            printf("diff correct\n");
             sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
+            p = receivePacket(sock);
+
+            char hash[128];
+            char path[SHORT_BUFFSIZE];
+            memset(path, 0, sizeof(path));
+            snprintf(path, sizeof(path), "%s_Client", username);
+
+            char **filesClient;
+            filesClient = listDir(path);
+            int numFilesClient = countFilesInDir(path);
+            
+
+            char clientFilesString[BUFFSIZE];
+            memset(clientFilesString, 0, sizeof(clientFilesString));
+            for (int i = 0; i < numFilesClient; i++) {
+                memset(hash, 0, sizeof hash);
+                char filePath[sizeof(path) + sizeof(filesClient[i]) + 1];
+                sprintf(filePath, "%s/%s", path, filesClient[i]);
+                calculateFileHash(filePath, hash);
+
+                char temp[SHORT_BUFFSIZE];
+                snprintf(temp, strlen(filesClient[i]) + MAX_DIGIT,
+                    "%s:%s:", filesClient[i], hash);
+                strncat(clientFilesString, temp, strlen(temp));
+            }
+            strncat(clientFilesString, "\n", 1);
+            printf("%s", clientFilesString);
+
+            char clientHasServerDont[SHORT_BUFFSIZE][SHORT_BUFFSIZE];
+            char serverHasClientDont[SHORT_BUFFSIZE][SHORT_BUFFSIZE];
+
+            char *saveClient, *saveServer;
+
+            char *nameClient = strtok_r(clientFilesString, ":", &saveClient);
+            char *hashClient = strtok_r(NULL, ":", &saveClient);
+
+
+            strtok_r(p.data, ":", &saveServer);
+            char *hashServer = strtok_r(NULL, ":", &saveServer);
+
+            int same = 0;
+            int numClientHas = 0;
+
+            for (int i = 0; i < numFilesClient; i++) {
+                same = 0;
+                for (int j = 0; j < p.length; j++){
+                    //comparison
+                    if(!strcmp(hashClient, hashServer)) {
+                        same = 1;
+                        printf("%s\n", hashClient);
+                        break;
+                    }
+                    //update server
+                    strtok_r(NULL, ":", &saveServer);
+                    hashServer = strtok_r(NULL, ":", &saveServer);
+                }
+                if (!same) {
+                    printf("before");
+                    memcpy(clientHasServerDont[numClientHas], nameClient, strlen(nameClient));
+                    printf("after");
+                    numClientHas++;
+                }
+
+                //update client
+                nameClient = strtok_r(NULL, ":", &saveClient);
+                hashClient = strtok_r(NULL, ":", &saveClient);
+            }
+
+            printf("Files on the client not server:\n");
+            for (int i = 0; i < numClientHas; i++) {
+                printf("%s\n", clientHasServerDont[i]);
+            }
+
+
+
+
+            // // Get list of files on client
+            // filesClient = listDir(path);
+            // int numFiles = countFilesInDir(path);
+
+            // printf("%s's files on the server:\n", username);
+            // for (int i = 0; i < p.length; i++)
+            // {
+            //     printf("%s; ", filesServer[i]);
+            // }
+            // printf("\n");
+            // printf("%s's files on the client:\n", username);
+            // for (int i = 0; i < p.length; i++)
+            // {
+            //     printf("%s; ", filesClient[i]);
+            // }
+
+            // printf("\n");
+            
+
+
         }
 
         // PULL (SYNC) REQUEST
@@ -134,7 +238,7 @@ int main(int argc, char *argv[]) {
             sendPacket(sock, PULL_TYPE, num, message);
 
             // Accepting that ready to get files
-            struct Packet p = receivePacket(sock);
+            p = receivePacket(sock);
             int fileSizes[num];
             char fileNames[num][SHORT_BUFFSIZE];
 
@@ -160,10 +264,10 @@ int main(int argc, char *argv[]) {
 
         // LEAVE REQUEST
         else if (!strcmp(command, "LEAVE")){
-            printf("leave correct\n");
+            printf("\nGood Bye!\n");
             sendPacket(sock, LEAVE_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             close(sock);
-            exit(0); // exit thread later
+            break;
         }
 
          // HELP REQUEST
@@ -180,50 +284,6 @@ int main(int argc, char *argv[]) {
             printf("Invalid input, please input command again\n");
             printf("Valid commands are: LIST, DIFF, PULL, and LEAVE\n");
         }
-    }
-
-
-    // size_t num = 3;
-    // char fileNames[3][100] = {"sample1.mp3", "sample2.mp3", "sample3.mp3"};
-    // int fileSizes[(int) num];
-    // struct Packet sending;
-    // sending.type = 0b00000010;
-    // sending.length = (u_char) num;
-
-    // for (size_t i = 0; i < num; i++) {
-    //     int fd = open(fileNames[i], O_RDONLY);
-    //     struct stat file_stat;
-    //     fstat(fd, &file_stat);
-    //     fileSizes[i] = file_stat.st_size;
-    //     char temp[SHORT_BUFFSIZE];
-    //     snprintf(temp, sizeof(fileNames[i])+32, "%s:%d:", fileNames[i], fileSizes[i]);
-    //     strncat(sending.data, temp, strlen(temp));
-    // }
-    // strncat(sending.data, "\n", 1);
-    // printf("%s\n", sending.data);
-    // printf("%d", send(sock, &sending, strlen(sending.data) + 2, 0));
-
-    // for (size_t i = 0; i < num; i++) {
-
-    //     int fd = open(fileNames[i], O_RDONLY);
-    //     struct stat file_stat;
-    //     fstat(fd, &file_stat);
-    //     printf("File: %s ; File size: %zu\n", fileNames[i], file_stat.st_size);
-
-    //     off_t offset = 0;
-    //     int sent_bytes = 0;
-    //     int remain_data = file_stat.st_size;
-
-    //     /* Sending file data */
-    //     while (((sent_bytes = sendfile(sock, fd, &offset, BUFFSIZE)) > 0) && (remain_data > 0)) {
-    //             printf("Sent: %d ; Offset: %ld ; Remaining: %d\n", sent_bytes, offset, remain_data);
-    //             remain_data -= sent_bytes;
-    //     }
-    //     sleep(2);
-    // }
-
-    for(;;) {
-        sleep(1);
     }
     return 0;
 }

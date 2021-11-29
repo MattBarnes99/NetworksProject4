@@ -3,7 +3,7 @@ bool validLogon = false;
 
 // Communication with a client
 void HandleTCPClient(int clntSocket, char* username);
-void handleListRequest(struct Packet p);
+void handleListRequest(char* username, struct Packet p, int clntSocket);
 void *ThreadMain(void *arg); // Main program of a thread
 void authorize(int clntSocket, char *username);
 
@@ -150,8 +150,8 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // LIST REQUEST
         if (type == LIST_TYPE) {
-            printf("LIST REQUEST\n");
-            handleListRequest(p);
+            printf("%s; LIST REQUEST\n", username);
+            handleListRequest(username, p, clntSocket);
         }
 
         // PULL REQUEST
@@ -216,52 +216,38 @@ void HandleTCPClient(int clntSocket, char* username) {
     }
 }
 
-void handleListRequest(struct Packet p) {
+void handleListRequest(char *username, struct Packet p, int clntSocket) {
 
     // 1. Get all files for current user
     // When this is threaded we'll need to get the username from a global in the thread
     // and decide folder name that way. 
-    char* path = "Jack_Client";
+    char path[SHORT_BUFFSIZE];
+    memset(path, 0, sizeof(path));
+    snprintf(path, sizeof(path), "%s_Server", username);
 
     // get number of files in dir
     int numFiles = countFilesInDir(path);
 
-    printf("%d files in directory.\n", numFiles);
+    // printf("%d files in directory.\n", numFiles);
 
     char **files = listDir(path);
-    char hash[128]; // Not sure why 16 bytes isn't big enough but its NOT
-
-    for (int i = 0; i < numFiles; i++)
-    {
+    char hash[128]; 
+    
+    char message[BUFFSIZE];
+    memset(message, 0, sizeof(message));
+    for (int i = 0; i < numFiles; i++) {
 
         memset(hash, 0, sizeof hash);
-        
         char filePath[sizeof(path) + sizeof(files[i]) + 1];
-
-        printf("%s -> ", files[i]);
-        
         sprintf(filePath, "%s/%s", path, files[i]);
-
         calculateFileHash(filePath, hash);
 
-        printf("%s\n", hash);
-
+        char temp[SHORT_BUFFSIZE];
+        snprintf(temp, strlen(files[i]) + MAX_DIGIT,
+            "%s:%s:", files[i], hash);
+        strncat(message, temp, strlen(temp));
     }
-    
-
-    // int* numFiles;
-    // char** files[100][100];
-    // files = listDir(user, numFiles);
-    // printf("Num files: %d", *numFiles);
-
-    // for(int i = 0; i < *numFiles; i++) {
-    //     printf("%s", *(files+i));
-    // }
-
-
-
-    // 2. Hash files and put them in a list
-    // 3. Format response LIST packet
-    // 4. Send LIST response
+    strncat(message, "\n", 1);
+    sendPacket(clntSocket, LIST_TYPE, numFiles, message);
 
 }

@@ -1,6 +1,4 @@
 #include "utility.h"
-
-#define BUFFERSIZE 1048576
 static char *files[100];
 
 // Send packet

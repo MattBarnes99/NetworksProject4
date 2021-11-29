@@ -30,7 +30,7 @@
 #define	BUFFSIZE	8192	/* buffer size for reads and writes */
 #define	LISTENQ		1024	/* 2nd argument to listen() */
 #define SHORT_BUFFSIZE  100     /* For messages I know are short */
-#define MAX_DIGIT   32
+#define MAX_DIGIT   64
 void DieWithError(char *errorMessage); /*Error handling function */
 
 // Packet properties
