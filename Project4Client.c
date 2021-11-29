@@ -1,82 +1,4 @@
 #include "utility.h"
-#include <ctype.h>
-
-
-void DieWithError(char *errorMessage) {
-    perror(errorMessage);
-    exit(1);
-}
-
-// int setupConnection(char *serverHost, char *serverPortString) {
-//     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-//     if (sock < 0)
-//         DieWithError("socket() failed");
-
-//     // Tell the system what kind(s) of address info we want
-//     struct addrinfo addrCriteria;                   // Criteria for address match
-//     memset(&addrCriteria, 0, sizeof(addrCriteria)); // Zero out structure
-//     addrCriteria.ai_family = AF_UNSPEC;             // Any address family
-//     addrCriteria.ai_socktype = SOCK_STREAM;         // Only stream sockets
-//     addrCriteria.ai_protocol = IPPROTO_TCP;         // Only TCP protocol
-
-//     // Get address(es) associated with the specified name/service
-//     struct addrinfo *addrList; // Holder for list of addresses returned
-
-//     // Modify servAddr contents to reference linked list of addresses
-//     int rtnVal = getaddrinfo(serverHost, serverPortString, &addrCriteria, &addrList);
-//     if (rtnVal != 0)
-//         DieWithError("getaddrinfo() failed");
-
-//     struct addrinfo *addr = addrList;
-
-//     // Establish the connection to the server
-//     if (connect(sock, addr->ai_addr, addr->ai_addrlen) < 0)
-//         DieWithError("connect() failed");
-
-//     return sock;
-// }
-
-// size_t sendPacket(int sock, u_char type, u_char length, char *data) {
-//     struct Packet p;
-//     p.type = type;
-//     p.length = length;
-//     strncpy(p.data, data, strlen(data) + HEADER_SIZE);
-
-//     ssize_t numBytes = send(sock, &p, strlen(p.data) + HEADER_SIZE, 0);
-//     if (numBytes < 0)
-//         DieWithError("send() failed");
-//     else if (numBytes != strlen(p.data) + HEADER_SIZE)
-//         DieWithError("send() incorrect numbaer of bytes");
-
-//     return numBytes;
-// }
-
-// struct Packet receivePacket(int sock) {
-//     struct Packet* p;
-//     char buffer[BUFFSIZE]; // Buffer for the received message
-//     unsigned int numBytes = 0;
-//     unsigned int totalBytes = 0;
-
-//     // Receive message from client
-//     for(;;) {
-//         numBytes = recv(sock, buffer + numBytes, BUFFSIZE - 1, 0);
-//         if (numBytes < 0)
-//             DieWithError("recv() failed");
-//         else if (numBytes == 0)
-//             DieWithError("recv() connection closed prematurely");
-//         totalBytes += numBytes;
-
-//         // Stop when newline char is received
-//         if(buffer[totalBytes - 1] == '\n') {
-//             buffer[totalBytes - 1] = '\0';
-//             break;
-//         }
-//     }
-
-//     p = (struct Packet*) buffer;
-//     return *p;
-// }
-
 
 int main(int argc, char *argv[]) {
 
@@ -109,25 +31,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Setup connection
+    // Setup TCP connection
     int sock = setupConnection(serverHost, servPortString);
-
-    // START OF LOGON CODE ---------------------------------------------------
-
-    // struct Packet logon;
-    // logon.type = 0x00;
-    // logon.length = 0x01;
-    // char temp[SHORT_BUFFSIZE];
-    // snprintf(temp, strlen(username) + strlen(password) + 2, "%s:%s", username, password);
-    // strncat(logon.data, temp, strlen(temp));
-    // strncat(logon.data, "\n", 1);
-
-    // printf("%s\n", logon.data);
-
-    // send(sock, &logon, strlen(logon.data) + HEADER_SIZE, 0);
-
-    // END OF LOGON CODE ------------------------------------------------------
-
 
     // LOGON REQUEST
     u_char logged = 0;
@@ -159,7 +64,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    for (;;){
+    for (;;) {
+
+        char message[BUFFSIZE];
+        memset(message, 0, sizeof(message));
+
 
         printf("Please enter a command:\n");
         scanf("%s", command);
@@ -172,23 +81,80 @@ int main(int argc, char *argv[]) {
         // LIST REQUEST
         if (!strcmp(command, "LIST")){
             printf("list correct\n");
+            sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
         }
 
         // DIFF REQUEST
         else if (!strcmp(command, "DIFF")){
             printf("diff correct\n");
+            sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
+
         }
 
         // PULL (SYNC) REQUEST
-        else if (!strcmp(command, "PULL")){
-            printf("pull correct\n");
+        else if (!strcmp(command, "PUSH")){
+
+            // Send Push command for songs that client has that server doesn't
+            char filePaths[2][SHORT_BUFFSIZE] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
+            size_t num = 2;
+            int fileSizes[(int) num];
+
+            for (size_t i = 0; i < num; i++) {
+                int fd = open(filePaths[i], O_RDONLY);
+                struct stat file_stat;
+                fstat(fd, &file_stat);
+                fileSizes[i] = file_stat.st_size;
+
+
+                char name[SHORT_BUFFSIZE];
+                memcpy(name, filePaths[i], SHORT_BUFFSIZE);
+                strtok(name, "/");
+
+
+                char temp[SHORT_BUFFSIZE];
+                snprintf(temp, sizeof(filePaths[i]) + sizeof(u_int32_t),
+                    "%s:%d:", strtok(NULL, "/"), fileSizes[i]);
+                strncat(message, temp, strlen(temp));
+            }
+
+            strncat(message, "\n", 1);
+            printf("%s\n", message);
+            sendPacket(sock, PUSH_TYPE, num, message);
+
+            struct Packet p = receivePacket(sock);
+
+            if (p.type == ACK_TYPE) {
+                printf("ready to send files!\n");
+                for (size_t i = 0; i < num; i++) {
+
+                    int fd = open(filePaths[i], O_RDONLY);
+                    struct stat file_stat;
+                    fstat(fd, &file_stat);
+
+                    off_t offset = 0;
+                    int sent_bytes = 0;
+                    int remain_data = file_stat.st_size;
+
+                    /* Sending file data */
+                    while (((sent_bytes = sendfile(sock, fd, &offset, BUFFSIZE)) > 0) && (remain_data > 0)) {
+                        remain_data -= sent_bytes;
+                    }
+
+                    p = receivePacket(sock);
+                    if (p.type == ACK_TYPE) {
+                        printf("File sent successfully!\n");
+                        continue;
+                    }
+                }
+            }
         }
 
         // LEAVE REQUEST
         else if (!strcmp(command, "LEAVE")){
             printf("leave correct\n");
+            sendPacket(sock, LEAVE_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             close(sock);
-            exit(0);
+            exit(0); // exit thread later
         }
 
         // INVALID COMMAND
@@ -198,25 +164,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
-
-
-
-
-    // START OF LOGON CODE ---------------------------------------------------
-
-    // size_t num = 2;
-    // struct Packet logon;
-    // logon.type = 0b00000000;
-    // logon.length = (u_char) num;
-    // char temp[SHORT_BUFFSIZE];
-    // snprintf(temp, strlen(username)+strlen(password), "%s:%s", username, password);
-    // strncat(logon.data, temp, strlen(temp));
-    // strncat(logon.data, "\n", 1);
-
-    // send(sock, &logon, strlen(logon.data) + 2, 0);
-
-    // END OF LOGON CODE ------------------------------------------------------
 
     // size_t num = 3;
     // char fileNames[3][100] = {"sample1.mp3", "sample2.mp3", "sample3.mp3"};

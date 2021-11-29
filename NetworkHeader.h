@@ -9,6 +9,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/sendfile.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <dirent.h>
 
 #define SERVER_HOST "141.166.206.223"  /* wallis IP address */
 #define SERVER_PORT "35001"
@@ -23,9 +26,10 @@
 #define SHORT_BUFFSIZE  100     /* For messages I know are short */
 void DieWithError(char *errorMessage); /*Error handling function */
 
-// Packet size
-#define HEADER_SIZE    0x02
-#define DEFAULT_LENGTH 0x00
+// Packet properties
+#define HEADER_SIZE     0x02
+#define DEFAULT_LENGTH  0x00
+#define DEFAULT_MESSAGE "\n"
 
 // Packet types
 #define LOGON_TYPE   0x00

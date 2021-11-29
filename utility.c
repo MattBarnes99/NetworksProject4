@@ -1,7 +1,8 @@
 #include "utility.h"
 
 // Send packet
-size_t sendPacket(int sock, u_char type, u_char length, char *data) {
+size_t sendPacket(int sock, u_char type, u_char length, char *data)
+{
     struct Packet p;
     p.type = type;
     p.length = length;
@@ -17,14 +18,16 @@ size_t sendPacket(int sock, u_char type, u_char length, char *data) {
 }
 
 // Receive packet
-struct Packet receivePacket(int sock) {
-    struct Packet* p;
+struct Packet receivePacket(int sock)
+{
+    struct Packet *p;
     char buffer[BUFFSIZE]; // Buffer for the received message
     unsigned int numBytes = 0;
     unsigned int totalBytes = 0;
 
     // Receive message from client
-    for(;;) {
+    for (;;)
+    {
         numBytes = recv(sock, buffer + numBytes, BUFFSIZE - 1, 0);
         if (numBytes < 0)
             DieWithError("recv() failed");
@@ -33,18 +36,20 @@ struct Packet receivePacket(int sock) {
         totalBytes += numBytes;
 
         // Stop when newline char is received
-        if(buffer[totalBytes - 1] == '\n') {
+        if (buffer[totalBytes - 1] == '\n')
+        {
             buffer[totalBytes - 1] = '\0';
             break;
         }
     }
 
-    p = (struct Packet*) buffer;
+    p = (struct Packet *)buffer;
     return *p;
 }
 
 // setup TCP connection
-int setupConnection(char *serverHost, char *serverPortString) {
+int setupConnection(char *serverHost, char *serverPortString)
+{
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0)
         DieWithError("socket() failed");
@@ -71,4 +76,63 @@ int setupConnection(char *serverHost, char *serverPortString) {
         DieWithError("connect() failed");
 
     return sock;
+}
+
+// Die with error message
+void DieWithError(char *errorMessage)
+{
+    perror(errorMessage);
+    exit(1);
+}
+
+// Recieve file
+unsigned int receiveFile(char *path, int size, int sock)
+{
+    char message[BUFFSIZE];
+    FILE *fptr = fopen(path, "w");
+    unsigned int totalBytes = 0;
+    unsigned int numBytes = 0;
+
+    printf("Received file: %s of size: %d\n", path, size);
+    // Receive message from client
+    for (;;)
+    {
+        numBytes = recv(sock, message, BUFFSIZE, 0);
+        totalBytes += numBytes;
+        if (numBytes < 0)
+            DieWithError("recv() failed");
+        else if (numBytes == 0)
+            DieWithError("recv() connection closed prematurely");
+
+        fwrite(message, sizeof(char), numBytes, fptr);
+
+        // Stop when newline char is received
+        if (totalBytes == size)
+            break;
+    }
+
+    fclose(fptr);
+    return totalBytes;
+}
+
+char **listDir(char* path, int* numFiles)
+{
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(path);
+    char** files;
+
+    int num = 0;
+    if (d)
+    {
+        while ((dir = readdir(d)) != NULL)
+        {
+
+            files[num] = dir->d_name;
+        }
+        closedir(d);
+    }
+
+    *numFiles = num;
+    return files;
 }
