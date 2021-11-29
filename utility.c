@@ -211,7 +211,7 @@ void createHash(char *path, char *hash) {
 
     for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
 		printf("%02x", (unsigned int) md5_digest[i]);
-        char *p = (char *) &md5_digest[i];
+        //char *p = (char *) &md5_digest[i];
         // printf("%s\n",p);
         sprintf(&hash[i*2], "%02x", md5_digest[i]);
         //strncpy(hash, p, strlen(p));

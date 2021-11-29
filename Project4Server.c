@@ -15,9 +15,10 @@ void authorize(int clntSocket, char *username) {
 
         char line[1024];
         while(fgets(line, 1024, users) ) {
-            if (!strcmp(line, data))
+            if (!strcmp(line, data)){
                 validLogon = true;
                 memcpy(username, strtok(line, ":"), SHORT_BUFFSIZE);
+            }
         }
 
         u_char type = validLogon ? ACK_TYPE : NACK_TYPE;
