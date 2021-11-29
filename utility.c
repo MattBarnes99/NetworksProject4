@@ -115,6 +115,69 @@ unsigned int receiveFile(char *path, int size, int sock)
     return totalBytes;
 }
 
+// Send push packet
+void sendPushPacket(char **filePaths, int num, int sock)
+{
+    int fileSizes[num];
+    char message[BUFFSIZE];
+    memset(message, 0, sizeof(message));
+
+    for (int i = 0; i < num; i++) {
+        int fd = open(filePaths[i], O_RDONLY);
+        struct stat file_stat;
+        fstat(fd, &file_stat);
+        fileSizes[i] = file_stat.st_size;
+        // printf("IN SEND PUSH PACKET\n");
+        // printf("PATH: %s ; SIZE: %d\n", filePaths[i], fileSizes[i]);
+
+
+        char name[SHORT_BUFFSIZE];
+        memset(name, 0, sizeof(name));
+        memcpy(name, filePaths[i], SHORT_BUFFSIZE);
+        strtok(name, "/");
+
+
+        char temp[SHORT_BUFFSIZE];
+        memset(temp, 0, sizeof(temp));
+        snprintf(temp, sizeof(filePaths[i]) + MAX_DIGIT,
+            "%s:%d:", strtok(NULL, "/"), fileSizes[i]);
+        strncat(message, temp, strlen(temp));
+    }
+
+    strncat(message, "\n", 1);
+    printf("%s", message);
+    sendPacket(sock, PUSH_TYPE, num, message);
+}
+
+// Push files
+void pushFiles(char **filePaths, int num, int sock)
+{
+    struct Packet p = receivePacket(sock);
+    if (p.type == ACK_TYPE) {
+        printf("ready to send files!\n");
+        for (int i = 0; i < num; i++) {
+            int fd = open(filePaths[i], O_RDONLY);
+            struct stat file_stat;
+            fstat(fd, &file_stat);
+
+            off_t offset = 0;
+            int sent_bytes = 0;
+            int remain_data = file_stat.st_size;
+
+            /* Sending file data */
+            while (((sent_bytes = sendfile(sock, fd, &offset, BUFFSIZE)) > 0) && (remain_data > 0)) {
+                remain_data -= sent_bytes;
+            }
+
+            p = receivePacket(sock);
+            if (p.type == ACK_TYPE) {
+                printf("File sent successfully!\n");
+                continue;
+            }
+        }
+    }
+}
+
 char **listDir(char* path, int* numFiles)
 {
     DIR *d;
@@ -135,4 +198,36 @@ char **listDir(char* path, int* numFiles)
 
     *numFiles = num;
     return files;
+}
+
+
+void createHash(char *path, char *hash) {
+    FILE* mp3file;
+    unsigned char md5_digest[MD5_DIGEST_LENGTH];
+
+    mp3file = fopen(path, "rb");
+
+    uint8_t buffer[BUFFERSIZE];
+
+    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+		printf("%02x", (unsigned int) md5_digest[i]);
+        char *p = (char *) &md5_digest[i];
+        // printf("%s\n",p);
+        sprintf(&hash[i*2], "%02x", md5_digest[i]);
+        //strncpy(hash, p, strlen(p));
+	}
+    printf("\n");
+    printf("Saved: %s\n", hash);
+
+
+
+    int bytes;
+    MD5_CTX mdContext;
+    MD5_Init (&mdContext);
+    while ((bytes = fread (buffer, 1, 1024, mp3file)) != 0)
+        MD5_Update (&mdContext, buffer, bytes);
+    MD5_Final (md5_digest, &mdContext);
+    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) printf("%02x", md5_digest[i]);
+    printf (" %s\n", path);
+    fclose (mp3file);
 }
