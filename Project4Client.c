@@ -31,6 +31,16 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // Print banner
+    FILE *banner = fopen("name.txt", "r");
+    char c = fgetc(banner);
+    while (c != EOF){
+        printf ("%c", c);
+        c = fgetc(banner);
+    }
+    fclose(banner);
+    printf("\n");
+
     // Setup TCP connection
     int sock = setupConnection(serverHost, servPortString);
 
@@ -39,12 +49,16 @@ int main(int argc, char *argv[]) {
     char username[SHORT_BUFFSIZE];
     char password[SHORT_BUFFSIZE];
     while (!logged) {
+        // Enter credentials
         printf("Please enter username: ");
         scanf("%s", username);
         printf("Please enter password: ");
         scanf("%s", password);
+        
+        // Prepare to send packet with login info
         char message[SHORT_BUFFSIZE];
-        snprintf(message, strlen(username) + strlen(password) + 2, "%s:%s", username, password);
+        snprintf(message, strlen(username) + strlen(password) + HEADER_SIZE,
+            "%s:%s", username, password);
         strncat(message, "\n", 1);
 
         sendPacket(sock, LOGON_TYPE, DEFAULT_LENGTH, message);
@@ -69,8 +83,8 @@ int main(int argc, char *argv[]) {
         char message[BUFFSIZE];
         memset(message, 0, sizeof(message));
 
-
-        printf("Please enter a command:\n");
+        // Ask user to enter a command
+        printf("\nPlease enter a command (type help for list of commands):\n");
         scanf("%s", command);
         char* str = command;
         while (*str) {
@@ -88,64 +102,59 @@ int main(int argc, char *argv[]) {
         else if (!strcmp(command, "DIFF")){
             printf("diff correct\n");
             sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
-
         }
 
         // PULL (SYNC) REQUEST
-        else if (!strcmp(command, "PUSH")){
+        else if (!strcmp(command, "PULL")){
 
-            // Send Push command for songs that client has that server doesn't
-            char filePaths[2][SHORT_BUFFSIZE] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
-            size_t num = 2;
-            int fileSizes[(int) num];
+            // GET FILE NAMES FOR PUSH AND PULL FROM DIFF
+            // SEND PUSH PACKET
+            // PUSH FILES TO SERVER
+            // SEND PULL PACKET
+            // RECEIVE FILES FROM SERVER
 
-            for (size_t i = 0; i < num; i++) {
-                int fd = open(filePaths[i], O_RDONLY);
-                struct stat file_stat;
-                fstat(fd, &file_stat);
-                fileSizes[i] = file_stat.st_size;
+            char *filePaths[2] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"}; 
+            int num = 2;
+            sendPushPacket(filePaths, num, sock);
+            pushFiles(filePaths, num, sock);
 
-
-                char name[SHORT_BUFFSIZE];
-                memcpy(name, filePaths[i], SHORT_BUFFSIZE);
-                strtok(name, "/");
-
-
+            // Sending pull request
+            char *pullFiles[2] = {"sample3.mp3", "sample4.mp3"};
+            num = 2;
+            char message[BUFFSIZE];
+            memset(message, 0, sizeof(message));
+            for (int i = 0; i < num; i++) {
                 char temp[SHORT_BUFFSIZE];
-                snprintf(temp, sizeof(filePaths[i]) + sizeof(u_int32_t),
-                    "%s:%d:", strtok(NULL, "/"), fileSizes[i]);
+                snprintf(temp, sizeof(filePaths[i]) + MAX_DIGIT,
+                    "%s:", pullFiles[i]);
                 strncat(message, temp, strlen(temp));
             }
-
             strncat(message, "\n", 1);
-            printf("%s\n", message);
-            sendPacket(sock, PUSH_TYPE, num, message);
+            printf("%s", message);
+            sendPacket(sock, PULL_TYPE, num, message);
 
+            // Accepting that ready to get files
             struct Packet p = receivePacket(sock);
+            int fileSizes[num];
+            char fileNames[num][SHORT_BUFFSIZE];
 
-            if (p.type == ACK_TYPE) {
-                printf("ready to send files!\n");
-                for (size_t i = 0; i < num; i++) {
+            char *name = strtok(p.data, ":");
+            char *size = strtok(NULL, ":");
+            for (int i = 0; i < num; i++){
+                strcpy(fileNames[i], name);
+                fileSizes[i] = atoi(size);
+                name = strtok(NULL, ":");
+                size = strtok(NULL, ":");
+            }
 
-                    int fd = open(filePaths[i], O_RDONLY);
-                    struct stat file_stat;
-                    fstat(fd, &file_stat);
+            sendPacket(sock, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
-                    off_t offset = 0;
-                    int sent_bytes = 0;
-                    int remain_data = file_stat.st_size;
-
-                    /* Sending file data */
-                    while (((sent_bytes = sendfile(sock, fd, &offset, BUFFSIZE)) > 0) && (remain_data > 0)) {
-                        remain_data -= sent_bytes;
-                    }
-
-                    p = receivePacket(sock);
-                    if (p.type == ACK_TYPE) {
-                        printf("File sent successfully!\n");
-                        continue;
-                    }
-                }
+            // RECEIVE FILES FROM SERVER
+            for (int i = 0; i < num; i++){
+                char path[SHORT_BUFFSIZE];
+                snprintf(path, sizeof(path), "%s_Client/%s", username, pullFiles[i]);
+                receiveFile(path, fileSizes[i], sock);
+                sendPacket(sock, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             }
         }
 
@@ -155,6 +164,15 @@ int main(int argc, char *argv[]) {
             sendPacket(sock, LEAVE_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
             close(sock);
             exit(0); // exit thread later
+        }
+
+         // HELP REQUEST
+        else if (!strcmp(command, "HELP")){
+            printf("COMMANDS:\n");
+            printf("LIST:   Lists all songs that the server has stored for client\n");
+            printf("DIFF:   Lists songs that client has that server does not AND songs that server has that client does not\n");
+            printf("PULL:   Synchronizes files so that server and client will have same songs\n");
+            printf("LEAVE:  Ends session for user\n");
         }
 
         // INVALID COMMAND

@@ -4,6 +4,31 @@ bool validLogon = false;
 // Communication with a client
 void HandleTCPClient(int clntSocket, char* username);
 void handleListRequest(struct Packet p);
+void *ThreadMain(void *arg); // Main program of a thread
+void authorize(int clntSocket, char *username);
+
+struct ThreadArgs { // for threading
+    int clntSock; // Socket descriptor for client
+};
+
+
+void *ThreadMain(void *threadArgs) {
+    // Guarantees that thread resources are deallocated upon return
+    pthread_detach(pthread_self());
+
+    // Extract socket file descriptor from argument
+    int clntSock = ((struct ThreadArgs *) threadArgs)->clntSock;
+    free(threadArgs); // Deallocate memory for argument
+
+    char *username = malloc(SHORT_BUFFSIZE);
+
+    authorize(clntSock, username); // verify login information
+    printf("Logged in user: %s\n", username);
+    HandleTCPClient(clntSock, username); // handles client
+    free(username); // dealocate username memory
+    printf("Closing thread %lx\n", (long int) pthread_self());
+    return (NULL);
+}
 
 
 void authorize(int clntSocket, char *username) {
@@ -16,15 +41,16 @@ void authorize(int clntSocket, char *username) {
         char line[1024];
         while(fgets(line, 1024, users) ) {
 
-            // Remove newline from fgets
+            // remove newline from fgets
             line[strcspn(line, "\n")] = '\0';
 
-            if (!strcmp(line, data)) {
+            if (!strcmp(line, data)){
                 validLogon = true;
                 memcpy(username, strtok(line, ":"), SHORT_BUFFSIZE);
             }
         }
-
+        
+        // send ACK or NACK back depending on if logon was valid
         u_char type = validLogon ? ACK_TYPE : NACK_TYPE;
         sendPacket(clntSocket, type, DEFAULT_LENGTH, "\n");
         fclose(users);
@@ -76,6 +102,7 @@ int main(int argc, char *argv[]) {
     if (listen(servSock, LISTENQ) < 0)
         DieWithError("listen() failed");
 
+
     for (;;) {
         // Client address
         struct sockaddr_in clntAddr;
@@ -91,54 +118,28 @@ int main(int argc, char *argv[]) {
         char clntName[INET_ADDRSTRLEN];
         if (inet_ntop(AF_INET, &clntAddr.sin_addr.s_addr, clntName,
                       sizeof(clntName)) != NULL)
-            printf("Handling client %s:%d\n\n", clntName, ntohs(clntAddr.sin_port));
+            printf("\nHandling client %s:%d\n", clntName, ntohs(clntAddr.sin_port));
         else
             puts("Unable to get client address");
 
 
-        // Handle a communication with a client
-        char username[SHORT_BUFFSIZE];
-        authorize(clntSock, username);
-        printf("HERE\n");
-        printf("USERNAME: %s\n", username);
-        HandleTCPClient(clntSock, username);
+        // Threading
+        // Create separate memory for client argument
+        struct ThreadArgs *threadArgs = (struct ThreadArgs *) malloc(sizeof(struct ThreadArgs));
+        if (threadArgs == NULL)
+            DieWithError("malloc() failed");
+        threadArgs->clntSock = clntSock;
+
+        // Create client thread
+        pthread_t threadID;
+        int returnValue = pthread_create(&threadID, NULL, ThreadMain, threadArgs);
+        if (returnValue != 0)
+            DieWithError("pthread_create() failed");
+        printf("With thread %lx\n", (long int) threadID);
     }
 }
 
-
-// unsigned int receiveFile(char* name, int size, int clntSocket) {
-//     char* message[BUFFSIZE];
-//     FILE *fptr = fopen(name, "w");
-//     unsigned int totalBytes = 0;
-//     unsigned int numBytes = 0;
-//     // Receive message from client
-//     for(;;) {
-//         numBytes = recv(clntSocket, message, BUFFSIZE, 0);
-//         totalBytes += numBytes;
-
-//         printf("Received %d bytes\n", numBytes);
-//         printf("Total bytes: %d\n", totalBytes);
-//         if (numBytes < 0)
-//             DieWithError("recv() failed");
-//         else if (numBytes == 0)
-//             DieWithError("recv() connection closed prematurely");
-
-//         fwrite(message, sizeof(char), numBytes, fptr);
-
-// 		// Stop when newline char is received
-//         // printf("Last bytes: %x ; %x\n", message[totalBytes], message[totalBytes - 1]);
-//         if(totalBytes == size) {
-//             // message[totalBytes - 1] = '\0';
-//             break;
-//         }
-//     }
-
-//     fclose(fptr);
-//     printf("Received %d bytes\n", totalBytes);
-//     return totalBytes;
-// }
-
-
+// handles client requests
 void HandleTCPClient(int clntSocket, char* username) {
 
     for (;;) {
@@ -155,31 +156,30 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // PULL REQUEST
         else if (type == PULL_TYPE) {
-            printf("PULL REQUEST\n");
-            // int num = p.length;
-            // int fileSizes[(int) num];
-            // char fileNames[3][100];
+            printf("%s; PULL REQUEST\n", username);
+            int num = p.length;
+            char *filePaths[num];
 
-            // printf("%d\n", num);
-            // printf("%s\n", buffer + 2);
+            char *temp = strtok(p.data, ":");
+            for (int i = 0; i < num; i++) {
+                char path[SHORT_BUFFSIZE];
+                memset(path, 0, sizeof(path));
+                snprintf(path, sizeof(path), "%s_Server/%s", username, temp);
+                filePaths[i] = malloc(sizeof(path));
+                memcpy(filePaths[i], path, SHORT_BUFFSIZE);
+                temp = strtok(NULL, ":");
+            }
 
-            // char *name = strtok(buffer + 2, ":");
-            // char *size = strtok(NULL, ":");
-            // for (int i = 0; i < num; i++){
-            //     strcpy(fileNames[i], name);
-            //     fileSizes[i] = atoi(size);
-            //     name = strtok(NULL, ":");
-            //     size = strtok(NULL, ":");
-            // }
+            sendPushPacket(filePaths, num, clntSocket);
+            pushFiles(filePaths, num, clntSocket);
 
-            // for (int i = 0; i < num; i++){
-            //     receiveMessage(fileNames[i], fileSizes[i], clntSocket);
-            // }
+            for (size_t i = 0; i < num; i++)
+                free(filePaths[i]);
         }
 
         // PUSH REQUEST
         else if (type == PUSH_TYPE) {
-            printf("PUSH REQUEST\n");
+            printf("%s; PUSH REQUEST\n", username);
             int num = p.length;
             int fileSizes[(int) num];
             char fileNames[num][SHORT_BUFFSIZE];
@@ -192,8 +192,6 @@ void HandleTCPClient(int clntSocket, char* username) {
                 name = strtok(NULL, ":");
                 size = strtok(NULL, ":");
             }
-
-            printf("Parsed correctly\n");
             sendPacket(clntSocket, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
             for (int i = 0; i < num; i++){
@@ -206,15 +204,15 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // LEAVE REQUEST
         else if (type == LEAVE_TYPE) {
-            printf("LEAVE REQUEST\n");
+            printf("%s; LEAVE REQUEST\n", username);
             close(clntSocket);
-            // Kill thread
+            return;
         }
 
 
         // ELSE INVALID - DO NOTHING
         else
-            printf("INVALID REQUEST\n");
+            printf("%s; INVALID REQUEST\n", username);
     }
 }
 
@@ -230,7 +228,7 @@ void handleListRequest(struct Packet p) {
 
     printf("%d files in directory.\n", numFiles);
 
-    char **files = listDir(path, numFiles);
+    char **files = listDir(path);
     char hash[128]; // Not sure why 16 bytes isn't big enough but its NOT
 
     for (int i = 0; i < numFiles; i++)

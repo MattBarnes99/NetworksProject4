@@ -1,4 +1,4 @@
-Nikita:p4567
-Angela:p6878
-Jack:jackiscool
-Matt:p1234
+Nikita:password
+Angela:1234
+Jack:qwerty
+Matt:Matt

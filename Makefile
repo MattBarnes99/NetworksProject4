@@ -3,7 +3,7 @@ OBJS1 = utility.o Project4Client.o
 OBJS2 = utility.o Project4Server.o
 
 CC = gcc
-CCFLAGS = -std=gnu11 -Wall -g -lcrypto
+CCFLAGS = -std=gnu11 -Wall -g -lcrypto -pthread
 
 all: $(EXECS)
 

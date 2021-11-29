@@ -12,9 +12,15 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <dirent.h>
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <stdint.h>
+#include <pthread.h>
+
 
 #define SERVER_HOST "141.166.206.223"  /* wallis IP address */
 #define SERVER_PORT "35001"
+#define BUFFERSIZE 1024
 
 #define SA struct sockaddr
 
@@ -24,6 +30,7 @@
 #define	BUFFSIZE	8192	/* buffer size for reads and writes */
 #define	LISTENQ		1024	/* 2nd argument to listen() */
 #define SHORT_BUFFSIZE  100     /* For messages I know are short */
+#define MAX_DIGIT   32
 void DieWithError(char *errorMessage); /*Error handling function */
 
 // Packet properties
