@@ -1,5 +1,8 @@
 #include "utility.h"
 
+#define BUFFERSIZE 1048576
+static char *files[100];
+
 // Send packet
 size_t sendPacket(int sock, u_char type, u_char length, char *data)
 {
@@ -115,12 +118,31 @@ unsigned int receiveFile(char *path, int size, int sock)
     return totalBytes;
 }
 
-char **listDir(char* path, int* numFiles)
+void calculateFileHash(char *path, char *hash) {
+
+    FILE* mp3file;
+    unsigned char md5_digest[MD5_DIGEST_LENGTH];
+
+    mp3file = fopen(path, "rb");
+
+    uint8_t buffer[BUFFERSIZE];
+	int buff_len = fread(buffer, 1, BUFFERSIZE, mp3file);
+
+    MD5(buffer, buff_len, md5_digest);
+
+    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+        sprintf(&hash[i*2], "%02x", md5_digest[i]);
+	}
+    
+}
+
+char **listDir(char *path, int numFiles)
 {
+
+    memset(files, 0, sizeof files);
     DIR *d;
     struct dirent *dir;
     d = opendir(path);
-    char** files;
 
     int num = 0;
     if (d)
@@ -128,11 +150,48 @@ char **listDir(char* path, int* numFiles)
         while ((dir = readdir(d)) != NULL)
         {
 
-            files[num] = dir->d_name;
+            char *fileName = dir->d_name;
+
+            // Don't count curr dir or back dir
+            if (!strcmp(fileName, ".") || !strcmp(fileName, ".."))
+            {
+                continue;
+            }
+
+            files[num] = (char *)malloc(255);
+            strncpy(files[num], fileName, 255);
+
+            num++;
         }
         closedir(d);
     }
 
-    *numFiles = num;
     return files;
+}
+
+int countFilesInDir(char *path)
+{
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(path);
+
+    int num = 0;
+    if (d)
+    {
+        while ((dir = readdir(d)) != NULL)
+        {
+            char *fileName = dir->d_name;
+
+            // Don't count curr dir or back dir
+            if (!strcmp(fileName, ".") || !strcmp(fileName, ".."))
+            {
+                continue;
+            }
+
+            num++;
+        }
+        closedir(d);
+    }
+
+    return num;
 }

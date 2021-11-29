@@ -15,9 +15,14 @@ void authorize(int clntSocket, char *username) {
 
         char line[1024];
         while(fgets(line, 1024, users) ) {
-            if (!strcmp(line, data))
+
+            // Remove newline from fgets
+            line[strcspn(line, "\n")] = '\0';
+
+            if (!strcmp(line, data)) {
                 validLogon = true;
                 memcpy(username, strtok(line, ":"), SHORT_BUFFSIZE);
+            }
         }
 
         u_char type = validLogon ? ACK_TYPE : NACK_TYPE;
@@ -145,7 +150,7 @@ void HandleTCPClient(int clntSocket, char* username) {
         // LIST REQUEST
         if (type == LIST_TYPE) {
             printf("LIST REQUEST\n");
-            // handleListRequest(p);
+            handleListRequest(p);
         }
 
         // PULL REQUEST
@@ -216,7 +221,35 @@ void HandleTCPClient(int clntSocket, char* username) {
 void handleListRequest(struct Packet p) {
 
     // 1. Get all files for current user
-    // char* user = "Jack";
+    // When this is threaded we'll need to get the username from a global in the thread
+    // and decide folder name that way. 
+    char* path = "Jack_Client";
+
+    // get number of files in dir
+    int numFiles = countFilesInDir(path);
+
+    printf("%d files in directory.\n", numFiles);
+
+    char **files = listDir(path, numFiles);
+    char hash[128]; // Not sure why 16 bytes isn't big enough but its NOT
+
+    for (int i = 0; i < numFiles; i++)
+    {
+
+        memset(hash, 0, sizeof hash);
+        
+        char filePath[sizeof(path) + sizeof(files[i]) + 1];
+
+        printf("%s -> ", files[i]);
+        
+        sprintf(filePath, "%s/%s", path, files[i]);
+
+        calculateFileHash(filePath, hash);
+
+        printf("%s\n", hash);
+
+    }
+    
 
     // int* numFiles;
     // char** files[100][100];
