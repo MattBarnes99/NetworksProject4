@@ -50,6 +50,7 @@ void authorize(int clntSocket, char *username) {
         for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
             sprintf(&pwd_hash[i * 2], "%02x", message_digest[i]); // save the hash for the file
         }
+        printf("%s\n",pwd_hash);
 
         //concatenate user input to username:hashed_pwd for comparison
         char user_input[SHORT_BUFFSIZE];
