@@ -238,7 +238,7 @@ void handleListRequest(char *username, struct Packet p, int clntSocket) {
     for (int i = 0; i < numFiles; i++) {
 
         memset(hash, 0, sizeof hash);
-        char filePath[sizeof(path) + sizeof(files[i]) + 1];
+        char filePath[strlen(path) + strlen(files[i]) + 1];
         sprintf(filePath, "%s/%s", path, files[i]);
         calculateFileHash(filePath, hash);
 
