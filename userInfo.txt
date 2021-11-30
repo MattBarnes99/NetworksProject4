@@ -1,4 +1,10 @@
-Nikita:password
-Angela:1234
-Jack:qwerty
-Matt:Matt
+Nikita:f8cf7194eb53f512b56990ef7a460a83
+Angela:c54e140a2dd945e845759e651c934738
+Jack:40687c8206d15373954d8b27c6724f62
+Matt:7c1f90bd9bdc70cc059640a7a6209389
+
+
+(password)
+(1234)
+(qwerty)
+(Matt)

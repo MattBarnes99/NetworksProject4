@@ -38,13 +38,31 @@ void authorize(int clntSocket, char *username) {
         char *data = p.data;
         FILE *users = fopen("userInfo.txt", "r");
 
+        // hashing the user password
+        char *user = strtok(data,":");
+        char *pwd = strtok(NULL,":");
+        char pwd_hash[128];
+        unsigned char message_digest[MD5_DIGEST_LENGTH];
+        MD5_CTX c;
+        MD5_Init(&c);
+        MD5_Update(&c, pwd, strlen(pwd));   // continuously hash chunks of data
+        MD5_Final(message_digest, &c); // place hash in message_digest
+        for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
+            sprintf(&pwd_hash[i * 2], "%02x", message_digest[i]); // save the hash for the file
+        }
+
+        //concatenate user input to username:hashed_pwd for comparison
+        char user_input[SHORT_BUFFSIZE];
+        memset(user_input, 0, sizeof(user_input));
+        snprintf(user_input, sizeof(user_input), "%s:%s", user, pwd_hash);
+
         char line[1024];
         while(fgets(line, 1024, users) ) {
 
             // remove newline from fgets
             line[strcspn(line, "\n")] = '\0';
-
-            if (!strcmp(line, data)){
+            
+            if (!strcmp(line, user_input)){
                 validLogon = true;
                 memcpy(username, strtok(line, ":"), SHORT_BUFFSIZE);
             }
