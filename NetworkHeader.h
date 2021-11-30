@@ -17,7 +17,6 @@
 #include <stdint.h>
 #include <pthread.h>
 
-
 #define SERVER_HOST "141.166.206.223"  /* wallis IP address */
 #define SERVER_PORT "35001"
 #define BUFFERSIZE 1024
