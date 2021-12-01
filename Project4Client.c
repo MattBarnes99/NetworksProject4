@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
                 printf("Files on server that are not on client:\n");
                 for (int i = 0; i < serverIndArrSize; i++)
                 {
-                    printf("%s\n", serverFiles[onlyOnServerInd[i]]);
+                    printf("- %s\n", serverFiles[onlyOnServerInd[i]]);
                 }
             }
 
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
                 printf("Files on client that are not on server:\n");
                 for (int i = 0; i < clientIndArrSize; i++)
                 {
-                    printf("%s\n", clientFiles[onlyOnClientInd[i]]);
+                    printf("- %s\n", clientFiles[onlyOnClientInd[i]]);
                 }
             }
         }
@@ -169,17 +169,63 @@ int main(int argc, char *argv[])
             // SEND PULL PACKET
             // RECEIVE FILES FROM SERVER
 
-            char *filePaths[2] = {"Matt_Client/sample1.mp3", "Matt_Client/sample2.mp3"};
-            int num = 2;
-            sendPushPacket(filePaths, num, sock);
-            pushFiles(filePaths, num, sock);
+            char *serverFiles[255];
+            char *clientFiles[255];
+            int serverIndArrSize = 0;
+            int clientIndArrSize = 0;
+            int onlyOnServerInd[sizeof(int)] = {0};
+            int onlyOnClientInd[sizeof(int)] = {0};
+            char path[strlen(username) + strlen("_Client")];
+            sprintf(path, "%s%s", username, "_Client");
+
+            getDiffInfo(sock, username, onlyOnServerInd, onlyOnClientInd, &serverIndArrSize, &clientIndArrSize, clientFiles, serverFiles);
+
+            printf("\n");
+
+            if (clientIndArrSize > 0)
+            {
+                printf("Pushing the following files to the server...\n");
+            }
+            else
+            {
+                printf("No files to push to server.\n");
+            }
+
+            char *filePaths[clientIndArrSize];
+            // Files on client that are not on server
+            for (int i = 0; i < clientIndArrSize; i++)
+            {
+                sprintf(filePaths[i], "%s/%s", path, clientFiles[onlyOnClientInd[i]]);
+                // printf("- %s\n", clientFiles[onlyOnClientInd[i]]);
+                printf("- %s\n", filePaths[i]);
+            }
+
+            printf("\n");
+            if (serverIndArrSize > 0)
+            {
+                printf("Pulling the following files from the server...\n");
+            }
+            else
+            {
+                printf("No files to pull from server.\n");
+            }
+
+            char pullFiles[serverIndArrSize][SHORT_BUFFSIZE];
+            // Files on server that are not on client
+            for (int i = 0; i < serverIndArrSize; i++)
+            {
+                sprintf(pullFiles[i], "%s", serverFiles[onlyOnServerInd[i]]);
+                printf("- %s\n", pullFiles[i]);
+            }
+            printf("\n");
+
+            sendPushPacket(filePaths, clientIndArrSize, sock);
+            pushFiles(filePaths, clientIndArrSize, sock);
 
             // Sending pull request
-            char *pullFiles[2] = {"sample3.mp3", "sample4.mp3"};
-            num = 2;
             char message[BUFFSIZE];
             memset(message, 0, sizeof(message));
-            for (int i = 0; i < num; i++)
+            for (int i = 0; i < serverIndArrSize; i++)
             {
                 char temp[SHORT_BUFFSIZE];
                 snprintf(temp, sizeof(filePaths[i]) + MAX_DIGIT,
@@ -188,16 +234,16 @@ int main(int argc, char *argv[])
             }
             strncat(message, "\n", 1);
             printf("%s", message);
-            sendPacket(sock, PULL_TYPE, num, message);
+            sendPacket(sock, PULL_TYPE, serverIndArrSize, message);
 
             // Accepting that ready to get files
             p = receivePacket(sock);
-            int fileSizes[num];
-            char fileNames[num][SHORT_BUFFSIZE];
+            int fileSizes[serverIndArrSize];
+            char fileNames[serverIndArrSize][SHORT_BUFFSIZE];
 
             char *name = strtok(p.data, ":");
             char *size = strtok(NULL, ":");
-            for (int i = 0; i < num; i++)
+            for (int i = 0; i < serverIndArrSize; i++)
             {
                 strcpy(fileNames[i], name);
                 fileSizes[i] = atoi(size);
@@ -208,7 +254,7 @@ int main(int argc, char *argv[])
             sendPacket(sock, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
             // RECEIVE FILES FROM SERVER
-            for (int i = 0; i < num; i++)
+            for (int i = 0; i < serverIndArrSize; i++)
             {
                 char path[SHORT_BUFFSIZE];
                 snprintf(path, sizeof(path), "%s_Client/%s", username, pullFiles[i]);
