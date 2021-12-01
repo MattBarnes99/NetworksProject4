@@ -1,5 +1,4 @@
 #include "utility.h"
-static char *files[100];
 
 // Send packet
 size_t sendPacket(int sock, u_char type, u_char length, char *data)
@@ -207,10 +206,9 @@ void pushFiles(char **filePaths, int num, int sock)
     }
 }
 
-char **listDir(char *path)
+void listDir(char *path, char** files)
 {
 
-    memset(files, 0, sizeof files);
     DIR *d;
     struct dirent *dir;
     d = opendir(path);
@@ -237,7 +235,6 @@ char **listDir(char *path)
         closedir(d);
     }
 
-    return files;
 }
 
 int countFilesInDir(char *path)

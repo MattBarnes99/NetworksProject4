@@ -14,7 +14,7 @@ int setupConnection(char *serverHost, char *serverPortString);
 // to receive files on client and server
 unsigned int receiveFile(char *path, int size, int sock);
 void calculateFileHash(char *path, char *hash);
-char **listDir(char *path);
+void listDir(char *path, char** files);
 int countFilesInDir(char *path);
 // to send push packet from client and server
 void sendPushPacket(char **filePaths, int num, int sock);

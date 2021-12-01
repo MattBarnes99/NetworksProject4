@@ -249,7 +249,8 @@ void handleListRequest(char *username, struct Packet p, int clntSocket) {
 
     // printf("%d files in directory.\n", numFiles);
 
-    char **files = listDir(path);
+    char* files[255];
+    listDir(path, files);
     char hash[128]; 
     
     char message[BUFFSIZE];

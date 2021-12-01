@@ -1,4 +1,5 @@
 #include "utility.h"
+void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd, int *serverIndArrSize, int *clientIndArrSize, char **clientFiles, char *serverFiles[255]);
 
 int main(int argc, char *argv[])
 {
@@ -123,103 +124,39 @@ int main(int argc, char *argv[])
         else if (!strcmp(command, "DIFF"))
         {
 
-            // Get list data from server
-            sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
-            p = receivePacket(sock);
+            printf("\n");
 
-            printf("%s\n", p.data);
-
-            // Create path to local files from username
-            char path[strlen(username) + strlen("_Client")];
-            sprintf(path, "./%s%s", username, "_Client");
-            printf("%s\n", path);
-
-            // Get number of files in dir
-            int numFiles = countFilesInDir(path);
-            printf("%d\n", numFiles);
-
-            // Hash local files
-            char **clientFiles = listDir(path);
-            char *clientHashes[128];
-            memset(clientHashes, 0, sizeof(clientHashes));
-
-            char hash[128];
-            char message[BUFFSIZE];
-            memset(message, 0, sizeof(message));
-            for (int i = 0; i < numFiles; i++)
-            {
-                // Clear hash variable
-                memset(hash, 0, sizeof hash);
-
-                // Build full path to file
-                char filePath[strlen(path) + strlen(clientFiles[i]) + 1];
-                sprintf(filePath, "%s/%s", path, clientFiles[i]);
-                printf("%s\n", filePath);
-
-                // Compute hash and save into hash variable
-                calculateFileHash(filePath, hash);
-
-                // strncpy(clientHashes[i], hash, strlen(hash));
-                clientHashes[i] = strndup(hash, strlen(hash));
-            }
-
-            printf("Client hashes:\n");
-            for (int i = 0; i < numFiles; i++)
-            {
-                printf("%s -> %s\n", clientFiles[i], clientHashes[i]);
-            }
-
-            // Parse server hashes / files
-            char serverFiles[p.length][255];
-            char *serverHashes[128];
-            memset(serverFiles, 0, sizeof(serverFiles));
-            memset(serverHashes, 0, sizeof(serverHashes));
-
-            // Context for strtok
-            char *context = NULL;
-
-            char *serverFile = strtok_r(p.data, ":", &context);
-            char *serverHash = strtok_r(NULL, ":", &context);
-
-            int count = 0;
-            while (serverHash != NULL)
-            {
-                strncpy(serverFiles[count], serverFile, strlen(serverFile));
-                serverHashes[count] = strndup(serverHash, strlen(serverHash));
-                count++;
-
-                serverFile = strtok_r(NULL, ":", &context);
-                serverHash = strtok_r(NULL, ":", &context);
-            }
-
-            printf("Server Hashes:\n");
-            for (int i = 0; i < count; i++)
-            {
-                printf("%s -> %s\n", serverFiles[i], serverHashes[i]);
-            }
-
-            // Server - Client
-            int onlyOnServerInd[sizeof(int)] = {0};
+            char *serverFiles[255];
+            char *clientFiles[255];
             int serverIndArrSize = 0;
-            get_diff(serverHashes, count, clientHashes, numFiles, onlyOnServerInd, &serverIndArrSize);
-
-            // Client - Server
-            int onlyOnClientInd[sizeof(int)] = {0};
             int clientIndArrSize = 0;
-            get_diff(clientHashes, numFiles, serverHashes, count, onlyOnClientInd, &clientIndArrSize);
+            int onlyOnServerInd[sizeof(int)] = {0};
+            int onlyOnClientInd[sizeof(int)] = {0};
 
+            getDiffInfo(sock, username, onlyOnServerInd, onlyOnClientInd, &serverIndArrSize, &clientIndArrSize, clientFiles, serverFiles);
 
-            printf("Files on client that are not on server:\n");
-            for(int i = 0; i < clientIndArrSize; i++) {
-                printf("%s\n", clientFiles[onlyOnClientInd[i]]);
+            if (serverIndArrSize == 0 && clientIndArrSize == 0)
+            {
+                printf("The server and client are in sync.\n");
             }
 
-            printf("Files on server that are not on client:\n");
-            for(int i = 0; i < serverIndArrSize; i++) {
-                printf("%s\n", serverFiles[onlyOnServerInd[i]]);
+            if (serverIndArrSize > 0)
+            {
+                printf("Files on server that are not on client:\n");
+                for (int i = 0; i < serverIndArrSize; i++)
+                {
+                    printf("%s\n", serverFiles[onlyOnServerInd[i]]);
+                }
             }
 
-            // for (int i = 0; i < )
+            if (clientIndArrSize > 0)
+            {
+                printf("Files on client that are not on server:\n");
+                for (int i = 0; i < clientIndArrSize; i++)
+                {
+                    printf("%s\n", clientFiles[onlyOnClientInd[i]]);
+                }
+            }
         }
 
         // PULL (SYNC) REQUEST
@@ -307,4 +244,76 @@ int main(int argc, char *argv[])
         }
     }
     return 0;
+}
+
+void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd, int *serverIndArrSize, int *clientIndArrSize, char **clientFiles, char **serverFiles)
+{
+    // Get list data from server
+    sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
+    struct Packet p = receivePacket(sock);
+
+    // Create path to local files from username
+    char path[strlen(username) + strlen("_Client")];
+    sprintf(path, "./%s%s", username, "_Client");
+
+    // Get number of files in dir
+    int numFiles = countFilesInDir(path);
+
+    // Hash local files
+    listDir(path, clientFiles);
+    char *clientHashes[128];
+    memset(clientHashes, 0, sizeof(clientHashes));
+    char hash[128];
+    char message[BUFFSIZE];
+    memset(message, 0, sizeof(message));
+    for (int i = 0; i < numFiles; i++)
+    {
+        // Clear hash variable
+        memset(hash, 0, sizeof hash);
+
+        // Build full path to file
+        char filePath[strlen(path) + strlen(clientFiles[i]) + 1];
+        sprintf(filePath, "%s/%s", path, clientFiles[i]);
+        // printf("%s\n", filePath);
+
+        // Compute hash and save into hash variable
+        calculateFileHash(filePath, hash);
+
+        // strncpy(clientHashes[i], hash, strlen(hash));
+        clientHashes[i] = strndup(hash, strlen(hash));
+    }
+
+    // Parse server hashes / files
+    char *serverHashes[128];
+    memset(serverFiles, 0, sizeof(*serverFiles));
+    memset(serverHashes, 0, sizeof(serverHashes));
+
+    // Context for strtok
+    char *context = NULL;
+
+    char *serverFile = strtok_r(p.data, ":", &context);
+    char *serverHash = strtok_r(NULL, ":", &context);
+
+    int count = 0;
+    while (serverHash != NULL)
+    {
+        serverFiles[count] = serverFile;
+        serverHashes[count] = strndup(serverHash, strlen(serverHash));
+        count++;
+
+        serverFile = strtok_r(NULL, ":", &context);
+        serverHash = strtok_r(NULL, ":", &context);
+    }
+
+    // printf("Server Hashes:\n");
+    // for (int i = 0; i < count; i++)
+    // {
+    //     printf("%s -> %s\n", serverFiles[i], serverHashes[i]);
+    // }
+
+    // Server - Client
+    get_diff(serverHashes, count, clientHashes, numFiles, onlyOnServerInd, serverIndArrSize);
+
+    // Client - Server
+    get_diff(clientHashes, numFiles, serverHashes, count, onlyOnClientInd, clientIndArrSize);
 }
