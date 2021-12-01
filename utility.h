@@ -3,10 +3,9 @@
 #include <openssl/sha.h>
 #include <dirent.h>
 
-
 // UTILITY FUNCTIONS
 
-//For sending generic packets
+// For sending generic packets
 size_t sendPacket(int sock, u_char type, u_char length, char *data);
 // To recieve packets
 struct Packet receivePacket(int sock);
@@ -23,3 +22,8 @@ void sendPushPacket(char **filePaths, int num, int sock);
 void pushFiles(char **filePaths, int num, int sock);
 // create hash for robust file comparison
 void createHash(char *path, char *hash);
+
+// Diff functions
+int in_set(char *x[128], int len, char *match);
+void get_diff(char *x[128], int lenx, char *y[128], int leny, int* ind, int* indArrSize);
+// void show_sym_diff(char *x[128], int lenx, char *y[128], int leny);

@@ -4,13 +4,13 @@ static char *files[100];
 // Send packet
 size_t sendPacket(int sock, u_char type, u_char length, char *data)
 {
-    //create packet to send
+    // create packet to send
     struct Packet p;
     p.type = type;
     p.length = length;
     strncpy(p.data, data, strlen(data) + HEADER_SIZE);
 
-    //send packet
+    // send packet
     ssize_t numBytes = send(sock, &p, strlen(p.data) + HEADER_SIZE, 0);
     if (numBytes < 0)
         DieWithError("send() failed");
@@ -23,7 +23,7 @@ size_t sendPacket(int sock, u_char type, u_char length, char *data)
 // Receive packet
 struct Packet receivePacket(int sock)
 {
-    //create packet to read into from recv
+    // create packet to read into from recv
     struct Packet *p;
     char buffer[BUFFSIZE]; // Buffer for the received message
     unsigned int numBytes = 0;
@@ -120,22 +120,23 @@ unsigned int receiveFile(char *path, int size, int sock)
     return totalBytes;
 }
 
-void calculateFileHash(char *path, char *hash) {
+void calculateFileHash(char *path, char *hash)
+{
 
-    FILE* mp3file;
+    FILE *mp3file;
     unsigned char md5_digest[MD5_DIGEST_LENGTH];
 
     mp3file = fopen(path, "rb");
 
     uint8_t buffer[BUFFERSIZE];
-	int buff_len = fread(buffer, 1, BUFFERSIZE, mp3file);
+    int buff_len = fread(buffer, 1, BUFFERSIZE, mp3file);
 
     MD5(buffer, buff_len, md5_digest);
 
-    for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
-        sprintf(&hash[i*2], "%02x", md5_digest[i]);
-	}
-    
+    for (int i = 0; i < MD5_DIGEST_LENGTH; i++)
+    {
+        sprintf(&hash[i * 2], "%02x", md5_digest[i]);
+    }
 }
 
 // Send push packet
@@ -149,7 +150,7 @@ void sendPushPacket(char **filePaths, int num, int sock)
     for (int i = 0; i < num; i++)
     {
         int fd = open(filePaths[i], O_RDONLY);
-        struct stat file_stat;  // Get file stats
+        struct stat file_stat; // Get file stats
         fstat(fd, &file_stat);
         fileSizes[i] = file_stat.st_size;
         // printf("IN SEND PUSH PACKET\n");
@@ -266,8 +267,8 @@ int countFilesInDir(char *path)
     return num;
 }
 
-
-void createHash(char *path, char *hash) { // creates md5 hash
+void createHash(char *path, char *hash)
+{ // creates md5 hash
     unsigned char message_digest[MD5_DIGEST_LENGTH];
     int i;
     FILE *mp3file = fopen(path, "rb"); // open the mp3 to be read in binary
@@ -277,12 +278,44 @@ void createHash(char *path, char *hash) { // creates md5 hash
 
     MD5_Init(&c);
     while ((bytes = fread(data, 1, BUFFERSIZE, mp3file)) != 0) // read mp3file until end
-        MD5_Update(&c, data, bytes);   // continuously hash chunks of data
-    MD5_Final(message_digest, &c); // place hash in message_digest
+        MD5_Update(&c, data, bytes);                           // continuously hash chunks of data
+    MD5_Final(message_digest, &c);                             // place hash in message_digest
 
-    for (i = 0; i < MD5_DIGEST_LENGTH; i++) {
+    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+    {
         sprintf(&hash[i * 2], "%02x", message_digest[i]); // save the hash for the file
     }
 
     fclose(mp3file); // close file
 }
+
+int in_set(char **x, int len, char *match)
+{
+    int i;
+    for (i = 0; i < len; i++)
+        if (x[i] && !strcmp(x[i], match))
+            return 1;
+    return 0;
+}
+
+/* x - y */
+void get_diff(char **x, int lenx, char **y, int leny, int *ind, int* indArrSize)
+{
+    int i;
+    int c = 0;
+    for (i = 0; i < lenx; i++)
+        if (x[i] && !in_set(y, leny, x[i]))
+        {
+            ind[c] = i;
+            c++;
+        }
+
+    *indArrSize = c;
+}
+
+/* X ^ Y */
+// void show_sym_diff(char *x[128], int lenx, char *y[128], int leny)
+// {
+//     show_diff(x, lenx, y, leny);
+//     show_diff(y, leny, x, lenx);
+// }
