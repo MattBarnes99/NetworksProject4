@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
             int clientIndArrSize = 0;
             int onlyOnServerInd[sizeof(int)] = {0};
             int onlyOnClientInd[sizeof(int)] = {0};
-            char path[strlen(username) + strlen("_Client")];
+            char path[strlen(username) + strlen("_Client") + 1];
             sprintf(path, "%s%s", username, "_Client");
 
             getDiffInfo(sock, username, onlyOnServerInd, onlyOnClientInd, &serverIndArrSize, &clientIndArrSize, clientFiles, serverFiles);
@@ -192,11 +192,14 @@ int main(int argc, char *argv[])
             }
 
             char *filePaths[clientIndArrSize];
+            memset(filePaths, 0, sizeof(filePaths));
             // Files on client that are not on server
             for (int i = 0; i < clientIndArrSize; i++)
             {
-                sprintf(filePaths[i], "%s/%s", path, clientFiles[onlyOnClientInd[i]]);
-                // printf("- %s\n", clientFiles[onlyOnClientInd[i]]);
+                char filePath[strlen(path) + strlen(clientFiles[onlyOnClientInd[i]])];
+                sprintf(filePath, "%s/%s", path, clientFiles[onlyOnClientInd[i]]);
+                filePaths[i] = strdup(filePath);
+                
                 printf("- %s\n", filePaths[i]);
             }
 
