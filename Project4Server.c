@@ -9,7 +9,8 @@ void handleListRequest(char* username, struct Packet p, int clntSocket);
 void *ThreadMain(void *arg); // Main program of a thread
 void authorize(int clntSocket, char *username);
 
-struct ThreadArgs { // for threading
+// for threading
+struct ThreadArgs{
     int clntSock; // Socket descriptor for client
 };
 
@@ -23,7 +24,6 @@ void *ThreadMain(void *threadArgs) {
     free(threadArgs); // Deallocate memory for argument
 
     char *username = malloc(SHORT_BUFFSIZE);
-
     authorize(clntSock, username); // verify login information
     printf("Logged in user: %s\n", username);
     HandleTCPClient(clntSock, username); // handles client
@@ -52,7 +52,6 @@ void authorize(int clntSocket, char *username) {
         for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
             sprintf(&pwd_hash[i * 2], "%02x", message_digest[i]); // save the hash for the file
         }
-        // printf("%s\n", pwd_hash);
 
         //concatenate user input to username:hashed_pwd for comparison
         char user_input[SHORT_BUFFSIZE];

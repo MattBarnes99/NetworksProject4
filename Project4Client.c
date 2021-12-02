@@ -1,8 +1,8 @@
 #include "utility.h"
-void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd, int *serverIndArrSize, int *clientIndArrSize, char **clientFiles, char *serverFiles[255]);
+void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd,
+    int *serverIndArrSize,int *clientIndArrSize, char **clientFiles, char *serverFiles[255]);
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
     char *serverHost = SERVER_HOST;
     char *servPortString = SERVER_PORT;
@@ -27,9 +27,6 @@ int main(int argc, char *argv[])
             case 'p':
                 servPortString = argv[i + 1];
                 break;
-            // case 'f':
-            //     fileName = argv[i + 1];
-            //     break;
             default:
                 break;
             }
@@ -295,7 +292,8 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd, int *serverIndArrSize, int *clientIndArrSize, char **clientFiles, char **serverFiles)
+void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClientInd,
+    int *serverIndArrSize, int *clientIndArrSize, char **clientFiles, char **serverFiles)
 {
     // Get list data from server
     sendPacket(sock, LIST_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
@@ -353,12 +351,6 @@ void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClie
         serverFile = strtok_r(NULL, ":", &context);
         serverHash = strtok_r(NULL, ":", &context);
     }
-
-    // printf("Server Hashes:\n");
-    // for (int i = 0; i < count; i++)
-    // {
-    //     printf("%s -> %s\n", serverFiles[i], serverHashes[i]);
-    // }
 
     // Server - Client
     get_diff(serverHashes, count, clientHashes, numFiles, onlyOnServerInd, serverIndArrSize);

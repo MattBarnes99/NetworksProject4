@@ -168,7 +168,6 @@ void pushFiles(char **filePaths, int num, int sock)
     struct Packet p = receivePacket(sock);
     if (p.type == ACK_TYPE) // recieve ack message in response to push packet before send files
     {
-        printf("ready to send files!\n");
         // send each file
         for (int i = 0; i < num; i++)
         {
