@@ -1,4 +1,6 @@
 #include "utility.h"
+
+
 bool validLogon = false;
 
 // Communication with a client
@@ -50,7 +52,7 @@ void authorize(int clntSocket, char *username) {
         for (int i = 0; i < MD5_DIGEST_LENGTH; i++) {
             sprintf(&pwd_hash[i * 2], "%02x", message_digest[i]); // save the hash for the file
         }
-        printf("%s\n",pwd_hash);
+        // printf("%s\n", pwd_hash);
 
         //concatenate user input to username:hashed_pwd for comparison
         char user_input[SHORT_BUFFSIZE];
@@ -58,17 +60,18 @@ void authorize(int clntSocket, char *username) {
         snprintf(user_input, sizeof(user_input), "%s:%s", user, pwd_hash);
 
         char line[1024];
+        // look at all users that we have on file
         while(fgets(line, 1024, users) ) {
 
             // remove newline from fgets
             line[strcspn(line, "\n")] = '\0';
-            
-            if (!strcmp(line, user_input)){
+
+            if (!strcmp(line, user_input)) {
                 validLogon = true;
                 memcpy(username, strtok(line, ":"), SHORT_BUFFSIZE);
             }
         }
-        
+
         // send ACK or NACK back depending on if logon was valid
         u_char type = validLogon ? ACK_TYPE : NACK_TYPE;
         sendPacket(clntSocket, type, DEFAULT_LENGTH, "\n");
@@ -123,13 +126,14 @@ int main(int argc, char *argv[]) {
 
 
     for (;;) {
+
         // Client address
         struct sockaddr_in clntAddr;
         // Set length of client address structure (in-out parameter)
         socklen_t clntAddrLen = sizeof(clntAddr);
 
         // Wait for a client to connect
-        int clntSock = accept(servSock, (struct sockaddr *)&clntAddr, &clntAddrLen);
+        int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
         if (clntSock < 0)
             DieWithError("accept() failed");
 
@@ -140,7 +144,6 @@ int main(int argc, char *argv[]) {
             printf("\nHandling client %s:%d\n", clntName, ntohs(clntAddr.sin_port));
         else
             puts("Unable to get client address");
-
 
         // Threading
         // Create separate memory for client argument
@@ -169,13 +172,13 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // LIST REQUEST
         if (type == LIST_TYPE) {
-            printf("%s; LIST REQUEST\n", username);
+            printf("\n%s; LIST REQUEST\n", username);
             handleListRequest(username, p, clntSocket);
         }
 
         // PULL REQUEST
         else if (type == PULL_TYPE) {
-            printf("%s; PULL REQUEST\n", username);
+            printf("\n%s; PULL REQUEST\n", username);
             int num = p.length;
             char *filePaths[num];
 
@@ -198,11 +201,12 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // PUSH REQUEST
         else if (type == PUSH_TYPE) {
-            printf("%s; PUSH REQUEST\n", username);
-            int num = p.length;
-            int fileSizes[(int) num];
-            char fileNames[num][SHORT_BUFFSIZE];
+            printf("\n%s; PUSH REQUEST\n", username);
+            int num = p.length; // number of songs to be pushed
+            int fileSizes[(int) num]; // associated file sizes
+            char fileNames[num][SHORT_BUFFSIZE]; // song names
 
+            // parse the message to get file names and sizes
             char *name = strtok(p.data, ":");
             char *size = strtok(NULL, ":");
             for (int i = 0; i < num; i++){
@@ -211,8 +215,11 @@ void HandleTCPClient(int clntSocket, char* username) {
                 name = strtok(NULL, ":");
                 size = strtok(NULL, ":");
             }
+
+            // acknowledge that a push request was received...
             sendPacket(clntSocket, ACK_TYPE, DEFAULT_LENGTH, DEFAULT_MESSAGE);
 
+            // ...receive the songs one by one
             for (int i = 0; i < num; i++){
                 char path[SHORT_BUFFSIZE];
                 snprintf(path, sizeof(path), "%s_Server/%s", username, fileNames[i]);
@@ -223,7 +230,7 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // LEAVE REQUEST
         else if (type == LEAVE_TYPE) {
-            printf("%s; LEAVE REQUEST\n", username);
+            printf("\n%s; LEAVE REQUEST\n", username);
             close(clntSocket);
             return;
         }
@@ -231,7 +238,7 @@ void HandleTCPClient(int clntSocket, char* username) {
 
         // ELSE INVALID - DO NOTHING
         else
-            printf("%s; INVALID REQUEST\n", username);
+            printf("\n%s; INVALID REQUEST\n", username);
     }
 }
 
@@ -239,7 +246,7 @@ void handleListRequest(char *username, struct Packet p, int clntSocket) {
 
     // 1. Get all files for current user
     // When this is threaded we'll need to get the username from a global in the thread
-    // and decide folder name that way. 
+    // and decide folder name that way.
     char path[SHORT_BUFFSIZE];
     memset(path, 0, sizeof(path));
     snprintf(path, sizeof(path), "%s_Server", username);
@@ -251,8 +258,8 @@ void handleListRequest(char *username, struct Packet p, int clntSocket) {
 
     char* files[255];
     listDir(path, files);
-    char hash[128]; 
-    
+    char hash[128];
+
     char message[BUFFSIZE];
     memset(message, 0, sizeof(message));
     for (int i = 0; i < numFiles; i++) {
@@ -260,7 +267,7 @@ void handleListRequest(char *username, struct Packet p, int clntSocket) {
         memset(hash, 0, sizeof hash);
         char filePath[strlen(path) + strlen(files[i]) + 1];
         sprintf(filePath, "%s/%s", path, files[i]);
-        calculateFileHash(filePath, hash);
+        createHash(filePath, hash);
 
         char temp[SHORT_BUFFSIZE];
         snprintf(temp, strlen(files[i]) + MAX_DIGIT,

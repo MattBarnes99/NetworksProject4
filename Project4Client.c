@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
                 char filePath[strlen(path) + strlen(clientFiles[onlyOnClientInd[i]])];
                 sprintf(filePath, "%s/%s", path, clientFiles[onlyOnClientInd[i]]);
                 filePaths[i] = strdup(filePath);
-                
+
                 printf("- %s\n", filePaths[i]);
             }
 
@@ -326,7 +326,7 @@ void getDiffInfo(int sock, char *username, int *onlyOnServerInd, int *onlyOnClie
         // printf("%s\n", filePath);
 
         // Compute hash and save into hash variable
-        calculateFileHash(filePath, hash);
+        createHash(filePath, hash);
 
         // strncpy(clientHashes[i], hash, strlen(hash));
         clientHashes[i] = strndup(hash, strlen(hash));

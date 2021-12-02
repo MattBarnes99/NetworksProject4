@@ -5,6 +5,10 @@
 
 // UTILITY FUNCTIONS
 
+// Kill the current thread if user disconnects unexpectedly
+void KillThread(char *errorMessage);
+// Error handling function
+void DieWithError(char *errorMessage);
 // For sending generic packets
 size_t sendPacket(int sock, u_char type, u_char length, char *data);
 // To recieve packets
@@ -26,4 +30,3 @@ void createHash(char *path, char *hash);
 // Diff functions
 int in_set(char *x[128], int len, char *match);
 void get_diff(char *x[128], int lenx, char *y[128], int leny, int* ind, int* indArrSize);
-// void show_sym_diff(char *x[128], int lenx, char *y[128], int leny);

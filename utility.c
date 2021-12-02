@@ -1,5 +1,13 @@
 #include "utility.h"
 
+// Kill thread when user disconnects
+void KillThread(char *errorMessage)
+{
+    printf("%s\n", errorMessage);
+    printf("User disconnected; Closing thread %lx\n", (long int) pthread_self());
+    pthread_exit(NULL);
+}
+
 // Send packet
 size_t sendPacket(int sock, u_char type, u_char length, char *data)
 {
@@ -33,9 +41,9 @@ struct Packet receivePacket(int sock)
     {
         numBytes = recv(sock, buffer + numBytes, BUFFSIZE - 1, 0);
         if (numBytes < 0)
-            DieWithError("recv() failed");
+            KillThread("recv() failed");
         else if (numBytes == 0)
-            DieWithError("recv() connection closed prematurely");
+            KillThread("recv() connection closed prematurely");
         totalBytes += numBytes;
 
         // Stop when newline char is received
@@ -46,7 +54,7 @@ struct Packet receivePacket(int sock)
         }
     }
 
-    p = (struct Packet *)buffer; // Look at buffer through lens of Packet struct
+    p = (struct Packet *)buffer; // look at buffer through lens of Packet struct
     return *p;
 }
 
@@ -88,6 +96,7 @@ void DieWithError(char *errorMessage)
     exit(1);
 }
 
+
 // Recieve file
 unsigned int receiveFile(char *path, int size, int sock)
 {
@@ -101,14 +110,14 @@ unsigned int receiveFile(char *path, int size, int sock)
     // Receive message from client
     for (;;)
     {
-        numBytes = recv(sock, message, BUFFSIZE, 0);
-        totalBytes += numBytes;
+        numBytes = recv(sock, message, BUFFSIZE, 0); // receive message
+        totalBytes += numBytes; // increment total number of bytes received
         if (numBytes < 0)
-            DieWithError("recv() failed");
+            KillThread("recv() failed");
         else if (numBytes == 0)
-            DieWithError("recv() connection closed prematurely");
+            KillThread("recv() connection closed prematurely");
 
-        fwrite(message, sizeof(char), numBytes, fptr);
+        fwrite(message, sizeof(char), numBytes, fptr); // print the file and its size
 
         // Stop when newline char is received
         if (totalBytes == size)
@@ -117,25 +126,6 @@ unsigned int receiveFile(char *path, int size, int sock)
 
     fclose(fptr);
     return totalBytes;
-}
-
-void calculateFileHash(char *path, char *hash)
-{
-
-    FILE *mp3file;
-    unsigned char md5_digest[MD5_DIGEST_LENGTH];
-
-    mp3file = fopen(path, "rb");
-
-    uint8_t buffer[BUFFERSIZE];
-    int buff_len = fread(buffer, 1, BUFFERSIZE, mp3file);
-
-    MD5(buffer, buff_len, md5_digest);
-
-    for (int i = 0; i < MD5_DIGEST_LENGTH; i++)
-    {
-        sprintf(&hash[i * 2], "%02x", md5_digest[i]);
-    }
 }
 
 // Send push packet
@@ -163,8 +153,8 @@ void sendPushPacket(char **filePaths, int num, int sock)
         char temp[SHORT_BUFFSIZE];
         memset(temp, 0, sizeof(temp));
         snprintf(temp, sizeof(filePaths[i]) + MAX_DIGIT,
-                 "%s:%d:", strtok(NULL, "/"), fileSizes[i]);
-        strncat(message, temp, strlen(temp));
+                 "%s:%d:", strtok(NULL, "/"), fileSizes[i]); // formats song name:size:
+        strncat(message, temp, strlen(temp)); // copy song name and its size to the message of songs to be sent
     }
 
     strncat(message, "\n", 1);
@@ -214,16 +204,13 @@ void listDir(char *path, char** files)
     d = opendir(path);
 
     int num = 0;
-    if (d)
-    {
-        while ((dir = readdir(d)) != NULL)
-        {
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
 
             char *fileName = dir->d_name;
 
             // Don't count curr dir or back dir
-            if (!strcmp(fileName, ".") || !strcmp(fileName, ".."))
-            {
+            if (!strcmp(fileName, ".") || !strcmp(fileName, "..")) {
                 continue;
             }
 
@@ -241,26 +228,21 @@ int countFilesInDir(char *path)
 {
     DIR *d;
     struct dirent *dir;
-    d = opendir(path);
+    d = opendir(path); // pointer to a directory stream
 
     int num = 0;
-    if (d)
-    {
-        while ((dir = readdir(d)) != NULL)
-        {
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
             char *fileName = dir->d_name;
 
             // Don't count curr dir or back dir
-            if (!strcmp(fileName, ".") || !strcmp(fileName, ".."))
-            {
+            if (!strcmp(fileName, ".") || !strcmp(fileName, "..")) {
                 continue;
             }
-
-            num++;
+            num++; // count the number of files
         }
-        closedir(d);
+        closedir(d); // close the directory
     }
-
     return num;
 }
 
